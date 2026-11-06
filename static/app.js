@@ -57,7 +57,7 @@ function setup(){
   $('dateEnd').value=max||'';
   $('dateStart').value=max? (min && shiftDay(max,-6)<min?min:shiftDay(max,-6)) : '';
   $('lastDate').textContent=isoBR(max);
-  $('sourceInfo').textContent=(data.meta.gerado_em?'Atualizado '+data.meta.gerado_em.replace('T',' ').slice(0,19):'Sem histórico carregado');
+  $('sourceInfo').textContent='Dados da JT API • PostgreSQL';
   refreshFilters();
   for(const id of [...filterIds,'dateStart','dateEnd','search'])$(id).addEventListener(id==='search'?'input':'change',()=>{page=1; render()});
   $('resetFilters').addEventListener('click',()=>{for(const id of filterIds)$(id).value='';$('search').value='';period('7');});
@@ -75,7 +75,6 @@ function setup(){
   $('downloadBases2').addEventListener('click',exportBases);
   $('downloadManagers').addEventListener('click',exportManagers);
   $('downloadSecondary').addEventListener('click',exportSecondary);
-  $('uploadForm').addEventListener('submit',handleUpload);
   document.addEventListener('click',handleActions);
   renderQuality();render();
 }
@@ -167,9 +166,9 @@ function handleActions(ev){const button=ev.target.closest('[data-secondary],[dat
   const child=document.createElement('tr');child.className='details-row';child.innerHTML=`<td colspan="8"><div class="detail-expanded"><div><h4>Declaração / status</h4><p>${esc(r.declaracao)}\n${esc(r.status)}</p></div><div><h4>R/M · base · código</h4><p>${esc(r.rm)}\n${esc(r.base)} · ${esc(r.codigo_base)}</p></div><div><h4>Gestão cadastrada</h4><p>Coordenador: ${esc(r.coordenador||'Não informado')}\nSupervisor: ${esc(r.supervisor||'Não informado')}</p></div><div class="wide"><h4>Classificação original (D / E)</h4><p>${esc(r.primaria)}\n${esc(r.secundaria)}</p></div><div><h4>Data da declaração</h4><p>${esc(isoBR(r.declarada_em))}</p></div><div class="wide"><h4>Descrição da anomalia (AB)</h4><p>${esc(r.descricao||'Não informada')}</p></div><div><h4>Decisão da arbitragem (AK)</h4><p>${esc(r.comentario_decisao||'Não informada')}</p></div><div><h4>Contestação (AL)</h4><p>${esc(r.comentario_contestacao||'Não informada')}</p></div></div></td>`;
   tr.after(child);button.textContent='Fechar';
 }
-function renderQuality(){const m=data.meta||{};const entries=[['Linhas na exportação · todas regionais',m.total_na_exportacao],['Responsabilizações Orlean no escopo',m.total_ativos],['Bases cadastradas no R/M',m.bases_gestao_orlean],['Bases do R/M com ocorrência',m.bases_ofensoras],['Sem correspondência global na gestão',m.sem_correspondencia_global],['Fora de Avaria/Extravio/PNR · Orlean',Object.values(m.fora_escopo_orlean||{}).reduce((s,x)=>s+x,0)]];
-  $('qualityStats').innerHTML=entries.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${n(v)}</dd></div>`).join('');
-  $('unmatchedRows').innerHTML=(m.sem_correspondencia_detalhes||[]).slice(0,20).map(r=>`<tr><td>${esc(r.base)}</td><td class="num">${n(r.qtd)}</td></tr>`).join('')||'<tr><td colspan="2" class="empty">Nenhuma divergência conhecida.</td></tr>';
+function renderQuality(){const m=data.meta||{};const entries=[['Responsabilizações Orlean no banco',m.total_ativos],['Bases do R/M com ocorrência',m.bases_ofensoras],['Sem correspondência global na Gestão',m.sem_correspondencia_global]];
+  $('qualityStats').innerHTML=entries.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${v===null||v===undefined?'Não apurado':n(v)}</dd></div>`).join('');
+  $('unmatchedRows').innerHTML='<tr><td colspan="2" class="empty">Verifique as bases sem vínculo na rotina ETL da JT API. O dashboard não inventa responsáveis nem exibe outras regionais.</td></tr>';
 }
 function csvCell(value,asCode=false){let s=String(value??'').replace(/\r?\n/g,' ');if(asCode&&s)s='\t'+s;else if(/^[=+@\-\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
 function downloadCSV(file,headers,records,codeCols=[]){const lines=['sep=;',headers.map(x=>csvCell(x)).join(';'),...records.map(row=>row.map((v,i)=>csvCell(v,codeCols.includes(i))).join(';'))];const blob=new Blob(['\uFEFF',lines.join('\r\n')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);notify('Exportação gerada: '+file)}
@@ -180,7 +179,25 @@ function exportDetails(){const headers=['Nº declaração','Nº remessa','Data a
 function exportBases(){const rows=baseGroups().map(g=>{const r=g.items[0];return[r.base,r.codigo_base,r.uf,r.rm,r.coordenador,r.supervisor,g.count,(g.value/100).toFixed(2).replace('.',',')]});downloadCSV('JT_'+active.toUpperCase()+'_bases_'+stamp()+'.csv',['Base','Código','UF','R/M','Coordenador','Supervisor','Ocorrências','Valor R$'],rows,[1]);}
 function exportManagers(){const rows=managerGroups().map(g=>[g.name,g.role,g.count,(g.value/100).toFixed(2).replace('.',',')]);downloadCSV('JT_'+active.toUpperCase()+'_responsaveis_'+stamp()+'.csv',['Responsável','Função','Ocorrências','Valor R$'],rows);}
 function exportSecondary(){const rows=secondaryGroups().map(g=>[active,g.primaria,g.secundaria,g.count,(g.value/100).toFixed(2).replace('.',',')]);downloadCSV('JT_'+active.toUpperCase()+'_secundarias_'+stamp()+'.csv',['Indicador','Primária (D)','Secundária (E)','Ocorrências','Valor R$'],rows);}
-async function handleUpload(event){event.preventDefault();const input=$('uploadFiles'),files=input.files;if(!files?.length)return;const form=new FormData();for(const file of files)form.append('arquivos',file);const status=$('uploadStatus'),button=$('uploadSubmit');button.disabled=true;status.textContent='Importando planilhas e recalculando os indicadores...';try{const res=await fetch('/api/importar',{method:'POST',body:form});let body;try{body=await res.json()}catch{body={detail:'Resposta inválida do servidor.'}}if(!res.ok)throw new Error(body.detail||'Erro de importação');status.textContent=`Atualizado: ${n(body.total)} ocorrências nas três abas. Recarregando os dados...`;input.value='';await refreshData();notify('Histórico atualizado com sucesso.')}catch(e){status.textContent='Não foi possível importar: '+e.message;notify('Erro ao importar XLSX.')}finally{button.disabled=false}}
-async function refreshData(){const response=await fetch('/api/dados',{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);data=await response.json();if(!Array.isArray(data.rows))throw new Error('JSON de dados inválido');allForTab=categoryRows();refreshFilters();$('lastDate').textContent=isoBR(data.meta.datas?.max);$('sourceInfo').textContent='Atualizado '+String(data.meta.gerado_em||'').replace('T',' ').slice(0,19);period('7');renderQuality();}
-async function load(){try{const embed=window.__PAINEL_EMBED__;if(embed){data=embed}else{const response=await fetch('/api/dados',{cache:'no-store'});if(response.ok)data=await response.json();else if(response.status!==404)throw new Error('Erro HTTP '+response.status)}}catch(err){console.error('Dados indisponíveis',err);notify('Não foi possível carregar os dados: '+err.message)}setup();if(!data.rows.length){$('uploadStatus').textContent='Nenhum histórico importado. Escolha Gestão + Arbitragem e clique em Importar.';$('importacao').open=true;}}
+async function load(){
+  try {
+    const response=await fetch('/api/dados',{cache:'no-store'});
+    if(!response.ok){
+      let body={};
+      try{body=await response.json()}catch{}
+      throw new Error(body.detail||('JT API retornou HTTP '+response.status));
+    }
+    data=await response.json();
+    if(!Array.isArray(data.rows))throw new Error('Formato inesperado da API de dados.');
+    setup();
+    if(!data.rows.length)notify('Não há ocorrências no banco para o R/M Orlean. Verifique a carga na JT API.');
+  }catch(error){
+    console.error('JT API indisponível:',error);
+    document.querySelector('.container').innerHTML=
+      '<section class="panel error-banner"><h2>Dados indisponíveis na JT API</h2>'+
+      '<p>'+esc(error.message)+'</p>'+
+      '<p>O painel lê exclusivamente o PostgreSQL da VM pela JT API. Não existe importação de XLSX pela interface. Confirme a tabela jt_arbitragem_ocorrencias e as variáveis JT_API_URL / JT_API_KEY do serviço.</p>'+
+      '<button class="btn btn-primary" type="button" onclick="location.reload()">Tentar novamente</button></section>';
+  }
+}
 load();
