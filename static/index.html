@@ -17,7 +17,7 @@
         <h1>Avaria, Extravio <span class="accent">e PNR</span></h1>
         <p>Responsabilizações, custos e análise operacional de ocorrências</p>
       </div>
-      <div class="last-date"><span>ÚLTIMA VISÃO</span><strong id="lastDate">—</strong><small id="sourceInfo">Carregando histórico</small></div>
+      <div class="last-date"><span>ÚLTIMA VISÃO</span><strong id="lastDate">—</strong><small id="sourceInfo">Consultando JT API / PostgreSQL</small></div>
     </div>
   </header>
 
@@ -99,11 +99,9 @@
       <div class="pager"><span id="pageStatus">—</span><div><button id="pagePrev" type="button" aria-label="Página anterior">Anterior</button><button id="pageNext" type="button" aria-label="Página seguinte">Próxima</button></div></div>
     </section>
 
-    <details class="panel quality-panel" id="conferencia"><summary><span><span class="eyebrow">CONFERÊNCIA DOS DADOS</span><strong>Qualidade do vínculo com a Gestão e regras de apuração</strong></span><span class="disclosure">Expandir</span></summary><div class="quality-inner"><dl id="qualityStats"></dl><div><h3>Bases sem correspondência com a Gestão</h3><p>Inclui registros de outras regionais. A ausência de correspondência não autoriza atribuição ao Orlean.</p><div class="table-wrap"><table><thead><tr><th>Base no arquivo</th><th class="num">Qtd.</th></tr></thead><tbody id="unmatchedRows"></tbody></table></div></div></div></details>
+    <details class="panel quality-panel" id="conferencia"><summary><span><span class="eyebrow">CONFERÊNCIA DOS DADOS</span><strong>Qualidade do vínculo com a Gestão e regras de apuração</strong></span><span class="disclosure">Expandir</span></summary><div class="quality-inner"><dl id="qualityStats"></dl><div><h3>Conciliação de bases</h3><p>Este painel mostra somente ocorrências ligadas ao R/M Orlean na tabela central. Bases sem vínculo e registros de outras regionais devem ser auditados na rotina de carga da JT API; não são atribuídos automaticamente.</p><div class="table-wrap"><table><thead><tr><th>Base no arquivo</th><th class="num">Qtd.</th></tr></thead><tbody id="unmatchedRows"></tbody></table></div></div></div></details>
 
-    <details class="panel import-panel" id="importacao"><summary><span><span class="eyebrow">ATUALIZAÇÃO DO HISTÓRICO</span><strong>Importar novas planilhas XLSX</strong></span><span class="disclosure">Expandir</span></summary><div class="import-inner"><p>Envie novos arquivos de <b>Arbitragem</b> e, quando houver mudanças de equipe, a <b>Gestão de Colaboradores</b>. O histórico existente é preservado e as bases são vinculadas novamente à gestão mais recente.</p><form id="uploadForm"><label class="upload-field">Selecione 1 a 12 arquivos XLSX<input type="file" id="uploadFiles" accept=".xlsx" multiple required /></label><button class="btn btn-primary" id="uploadSubmit" type="submit">Importar e atualizar dashboard</button></form><p id="uploadStatus" class="upload-status">Dados enviados ficam no armazenamento do servidor, não no GitHub. No Render, configure armazenamento persistente para não perder o histórico a cada reinicialização.</p></div></details>
-
-    <footer class="footer"><span>J&amp;T Express · Indicadores de Qualidade</span><span>R/M Orlean · Uso operacional interno · Valores em BRL</span></footer>
+<footer class="footer"><span>J&amp;T Express · Indicadores de Qualidade</span><span>R/M Orlean · Uso operacional interno · Valores em BRL</span></footer>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
