@@ -54,7 +54,7 @@ class APIBackendTests(unittest.TestCase):
         }):
             client = TestClient(dashboard.app)
             response = client.post("/api/importar")
-            self.assertEqual(response.status_code, 405)
+            self.assertEqual(response.status_code, 404)
             with patch.object(dashboard, "cached_data", return_value=dashboard.bundle([])):
                 result = client.get("/api/dados")
                 self.assertEqual(result.status_code, 200)
