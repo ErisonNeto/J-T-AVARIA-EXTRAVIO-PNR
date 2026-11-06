@@ -1,0 +1,40 @@
+name: Validacao do dashboard
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Dependencias
+        run: python -m pip install -r requirements.txt
+      - name: Verificar sintaxe Python
+        run: python -m compileall -q app.py importar_excel.py criar_previa.py tests
+      - name: Verificar sintaxe JavaScript
+        run: node --check static/app.js
+      - name: Executar testes
+        run: python -m unittest discover -s tests -v
+      - name: Verificar arquivos sigilosos nao versionados
+        run: |
+          if git ls-files | grep -Ei '(^entradas/|^dados/|\.xlsx$|\.xls$|\.csv$|\.json\.gz$|_Preview\.html$)'; then
+            echo "ERRO: dados operacionais encontrados no repositório."
+            exit 1
+          fi
