@@ -98,6 +98,23 @@ A tabela pode ser criada automaticamente pelo endpoint genérico `/import` quand
 
 **Não é possível inferir valores de arbitragem apenas das tabelas SLA, Shipping Time e T0.** É necessário que essas ocorrências tenham sido carregadas na tabela própria. A API já existente transporta e consulta os dados, mas não cria as informações de origem.
 
+## Diagnóstico da JT API (sem expor a chave)
+
+Caso a tela exiba **Dados indisponíveis na JT API** e o console mostre `GET /api/dados 503`, execute no PC com `.env` configurado:
+
+```powershell
+python .\diagnosticar_api.py
+```
+
+O comando é **somente leitura**: testa `SELECT 1`, existência da tabela `public.jt_arbitragem_ocorrencias`, colunas esperadas e a consulta de uma linha usada pelo painel. Exibe apenas HTTP/status e diagnóstico — não imprime chave, remessas ou valores de ocorrências.
+
+- **1/4 HTTP 500:** problema na JT API, PostgreSQL ou permissões; consulte logs do servidor da API.
+- **2/4 tabela não encontrada:** realizar a primeira carga com `publicar_postgres_via_api.py` no PC operacional, sem formulário no dashboard.
+- **3/4 colunas faltando:** conferir o esquema gerado pela rotina ETL.
+- **4/4 HTTP 500:** verificar se a consulta paginada é compatível com a versão da JT API e o esquema.
+
+`/api/health` indica apenas que o serviço web está ativo, **não valida a consulta ao banco**.
+
 ## Deploy Render
 
 Conecte o repositório em **New → Blueprint** ou configure:
