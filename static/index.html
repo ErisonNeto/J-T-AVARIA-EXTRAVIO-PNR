@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#d71920" />
+  <meta name="description" content="Indicadores internos de qualidade J&T: Avaria, Extravio e PNR." />
+  <title>J&T Express | Avaria · Extravio · PNR</title>
+  <link rel="stylesheet" href="/static/style.css?v=3abas-1" />
+  <script defer src="/static/app.js?v=3abas-1"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-title">
+        <div class="badges"><span class="badge brand">J&amp;T EXPRESS</span><span class="badge gray">QUALIDADE · LAST MILE</span></div>
+        <h1>Avaria, Extravio <span class="accent">e PNR</span></h1>
+        <p>Responsabilizações, custos e análise operacional de ocorrências</p>
+      </div>
+      <div class="last-date"><span>ÚLTIMA VISÃO</span><strong id="lastDate">—</strong><small id="sourceInfo">Carregando histórico</small></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav class="dashboard-tabs" aria-label="Indicadores separados">
+      <button class="dashboard-tab is-active" data-tab="Avaria" type="button"><span class="tab-marker"></span>Avaria <span class="tab-count" id="tabAvaria">—</span></button>
+      <button class="dashboard-tab" data-tab="Extravio" type="button"><span class="tab-marker"></span>Extravio <span class="tab-count" id="tabExtravio">—</span></button>
+      <button class="dashboard-tab" data-tab="PNR" type="button"><span class="tab-marker"></span>PNR <span class="tab-count" id="tabPNR">—</span></button>
+    </nav>
+
+    <section class="filters-panel" aria-label="Filtros da visão">
+      <div class="section-head">
+        <div><span class="eyebrow">CONTROLE DE VISÃO</span><h2>Filtros operacionais</h2><p>Os filtros permanecem ao trocar de aba. Cada indicador tem dados e rankings independentes.</p></div>
+        <div class="head-actions"><button class="btn btn-light" id="resetFilters" type="button">Limpar filtros</button></div>
+      </div>
+      <div class="filters-grid">
+        <label class="filter-card"><span>Data inicial</span><input id="dateStart" type="date" /></label>
+        <label class="filter-card"><span>Data final</span><input id="dateEnd" type="date" /></label>
+        <label class="filter-card"><span>UF</span><select id="uf"><option value="">Todas</option></select></label>
+        <label class="filter-card"><span>S/C</span><select id="sc"><option value="">Todos</option></select></label>
+        <label class="filter-card"><span>Coordenador</span><select id="coordenador"><option value="">Todos</option></select></label>
+        <label class="filter-card"><span>Supervisor</span><select id="supervisor"><option value="">Todos</option></select></label>
+        <label class="filter-card"><span>Base responsável</span><select id="base"><option value="">Todas</option></select></label>
+        <label class="filter-card"><span>Anomalia secundária</span><select id="secundaria"><option value="">Todas</option></select></label>
+        <label class="filter-card" id="originField"><span>Origem do extravio</span><select id="modalidade"><option value="">Todas</option></select></label>
+        <label class="filter-card"><span>Remessa / declaração</span><input id="search" type="search" placeholder="Digite o número" autocomplete="off" /></label>
+        <div class="filter-card static-filter"><span>R/M</span><strong>ORLEAN</strong></div>
+      </div>
+      <div class="quick-row">
+        <div class="quick-links"><span>Período:</span><button data-period="last" type="button">Último dia</button><button data-period="7" type="button" class="active">Últimos 7 dias</button><button data-period="month" type="button">Mês</button><button data-period="all" type="button">Todo o histórico</button></div>
+        <span id="filterResult" class="filter-result">—</span>
+      </div>
+    </section>
+
+    <section class="cards" aria-label="Indicadores principais">
+      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Valor a pagar</span><span class="kpi-icon">R$</span></div><strong id="kValue">—</strong><small>Valores da coluna AG já em reais</small></article>
+      <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Ocorrências</span><span class="kpi-icon">Σ</span></div><strong id="kCount">—</strong><small>Responsabilizações no período</small></article>
+      <article class="card kpi-card kpi-danger"><div class="kpi-head"><span>Bases ofensoras</span><span class="kpi-icon">!</span></div><strong id="kBases">—</strong><small>Unidades identificadas na Gestão</small></article>
+      <article class="card kpi-card kpi-success"><div class="kpi-head"><span>Responsáveis S/C</span><span class="kpi-icon">◎</span></div><strong id="kManagers">—</strong><small>Coordenadores e supervisores distintos</small></article>
+    </section>
+
+    <section class="summary-strip" aria-label="Contexto semanal">
+      <div><span>Custo médio por ocorrência</span><strong id="kTicket">—</strong><small>Valor / quantidade</small></div>
+      <div><span>Mesmo período, 7 dias antes</span><strong id="kPrevious">—</strong><small id="kPreviousHint">—</small></div>
+      <div><span>Semana passada · seg a dom</span><strong id="kLastWeek">—</strong><small id="kLastWeekHint">—</small></div>
+      <div><span>Mesmo dia na semana passada</span><strong id="kSameDay">—</strong><small id="kSameDayHint">—</small></div>
+    </section>
+
+    <section class="panel evolution-panel" id="evolucao">
+      <div class="section-head panel-head">
+        <div><span class="eyebrow">EVOLUÇÃO OPERACIONAL</span><h2 id="chartTitle">Evolução diária — Avaria</h2><p>Histórico do indicador selecionado; a referência anterior considera os mesmos dias, 7 dias antes.</p></div>
+        <div class="switch-wrap"><div class="switch" role="group" aria-label="Métrica do gráfico"><button class="on" data-chartmetric="count" type="button">Quantidade</button><button data-chartmetric="value" type="button">Valor (R$)</button></div><div class="switch" role="group" aria-label="Agrupamento do gráfico"><button class="on" data-chartperiod="day" type="button">Diário</button><button data-chartperiod="week" type="button">Semanal</button></div></div>
+      </div>
+      <div id="chart" class="chart-area" aria-live="polite"></div>
+      <div class="chart-legend"><span><i class="legend-red"></i>Período selecionado</span><span><i class="legend-gray"></i>Mesmo período, 7 dias antes</span><span id="chartCoverage">—</span></div>
+    </section>
+
+    <section class="ranking-section" id="ofensores">
+      <div class="section-head ranking-header">
+        <div><span class="eyebrow">GESTÃO OPERACIONAL</span><h2>Principais ofensores</h2><p>Classificação por custo ou quantidade; rankings completos disponíveis.</p></div>
+        <div class="switch" role="group" aria-label="Ordenar rankings"><button class="on" data-rankmetric="value" type="button">Maior custo</button><button data-rankmetric="count" type="button">Maior volume</button></div>
+      </div>
+      <div class="rank-grid">
+        <article class="panel rank-panel"><div class="table-head"><div><span class="eyebrow">BASES</span><h3>Bases ofensoras</h3><p id="baseLabel">—</p></div><button class="link-btn" id="downloadBases" type="button">Baixar CSV</button></div><div class="table-wrap rank-wrap"><table><thead><tr><th>Base / UF</th><th>Coordenador / Supervisor</th><th class="num">Qtd.</th><th class="num">Valor (R$)</th></tr></thead><tbody id="baseRows"></tbody></table></div><button class="more-btn" id="moreBases" type="button">Ver todas as bases</button></article>
+        <article class="panel rank-panel"><div class="table-head"><div><span class="eyebrow">RESPONSÁVEIS</span><h3>Coordenadores e supervisores</h3><p>Uma ocorrência pode constar para ambos os cargos.</p></div><button class="link-btn" id="downloadManagers" type="button">Baixar CSV</button></div><div class="table-wrap rank-wrap"><table><thead><tr><th>Responsável</th><th>Função</th><th class="num">Qtd.</th><th class="num">Valor (R$)</th></tr></thead><tbody id="managerRows"></tbody></table></div><button class="more-btn" id="moreManagers" type="button">Ver todos os S/C</button></article>
+      </div>
+    </section>
+
+    <section class="panel secondary-panel" id="secundarias">
+      <div class="section-head panel-head"><div><span class="eyebrow">ANÁLISE DE COERÊNCIA · S/C</span><h2>Anomalias secundárias</h2><p>Colunas D e E originais, sem classificação automática de coerência.</p></div><button class="btn btn-outline" id="downloadSecondary" type="button">Baixar resumo</button></div>
+      <div class="review-note">A análise de coerência deve ser feita pelo S/C. O arquivo detalhado inclui os campos em branco <b>Coerente? (Sim/Não)</b> e <b>Observação do S/C</b> para preenchimento manual.</div>
+      <div class="table-wrap"><table><thead><tr><th>Anomalia primária (D)</th><th>Anomalia secundária (E)</th><th class="num">Qtd.</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="secondaryRows"></tbody></table></div>
+    </section>
+
+    <section class="panel detail-panel" id="detalhamento">
+      <div class="section-head panel-head"><div><span class="eyebrow">AUDITORIA E EXPORTAÇÃO</span><h2>Detalhamento das remessas</h2><p>Dados da aba atual e de todos os filtros; uma linha para cada responsabilização.</p></div><div class="head-actions"><button class="btn btn-outline" id="downloadBases2" type="button">Ranking de bases</button><button class="btn btn-primary" id="downloadDetails" type="button">Baixar base filtrada (CSV)</button></div></div>
+      <div class="detail-info" id="detailCount">—</div>
+      <div class="table-wrap detail-wrap"><table><thead><tr><th>Fechamento</th><th>Nº remessa</th><th>Tipo secundário</th><th>Base</th><th>Coordenador</th><th>Supervisor</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="detailRows"></tbody></table></div>
+      <div class="pager"><span id="pageStatus">—</span><div><button id="pagePrev" type="button" aria-label="Página anterior">Anterior</button><button id="pageNext" type="button" aria-label="Página seguinte">Próxima</button></div></div>
+    </section>
+
+    <details class="panel quality-panel" id="conferencia"><summary><span><span class="eyebrow">CONFERÊNCIA DOS DADOS</span><strong>Qualidade do vínculo com a Gestão e regras de apuração</strong></span><span class="disclosure">Expandir</span></summary><div class="quality-inner"><dl id="qualityStats"></dl><div><h3>Bases sem correspondência com a Gestão</h3><p>Inclui registros de outras regionais. A ausência de correspondência não autoriza atribuição ao Orlean.</p><div class="table-wrap"><table><thead><tr><th>Base no arquivo</th><th class="num">Qtd.</th></tr></thead><tbody id="unmatchedRows"></tbody></table></div></div></div></details>
+
+    <details class="panel import-panel" id="importacao"><summary><span><span class="eyebrow">ATUALIZAÇÃO DO HISTÓRICO</span><strong>Importar novas planilhas XLSX</strong></span><span class="disclosure">Expandir</span></summary><div class="import-inner"><p>Envie novos arquivos de <b>Arbitragem</b> e, quando houver mudanças de equipe, a <b>Gestão de Colaboradores</b>. O histórico existente é preservado e as bases são vinculadas novamente à gestão mais recente.</p><form id="uploadForm"><label class="upload-field">Selecione 1 a 12 arquivos XLSX<input type="file" id="uploadFiles" accept=".xlsx" multiple required /></label><button class="btn btn-primary" id="uploadSubmit" type="submit">Importar e atualizar dashboard</button></form><p id="uploadStatus" class="upload-status">Dados enviados ficam no armazenamento do servidor, não no GitHub. No Render, configure armazenamento persistente para não perder o histórico a cada reinicialização.</p></div></details>
+
+    <footer class="footer"><span>J&amp;T Express · Indicadores de Qualidade</span><span>R/M Orlean · Uso operacional interno · Valores em BRL</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

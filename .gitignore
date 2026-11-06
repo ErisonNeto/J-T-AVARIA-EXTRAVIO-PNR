@@ -1,0 +1,23 @@
+# Dados reais J&T / confidenciais — não versionar.
+entradas/
+dados/
+*.xlsx
+*.xls
+*.csv
+*.zip
+*.json.gz
+*_Preview.html
+screenshot_*.png
+*.png
+
+# Ambiente local e variáveis confidenciais.
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+*.log
