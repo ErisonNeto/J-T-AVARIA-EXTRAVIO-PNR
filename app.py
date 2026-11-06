@@ -1,114 +1,217 @@
-"""J&T | Avaria, Extravio e PNR — aplicação protegida para uso interno.
+"""J&T | Avaria / Extravio / PNR — dashboard que lê o PostgreSQL via JT API.
 
-Produção: DASH_USER e DASH_PASSWORD obrigatórios. Dados nunca precisam ser
-publicados no GitHub; admin envia planilhas pelo painel ou importa no servidor.
+Nenhuma planilha ou arquivo local é recebido pelo serviço Render.
+Os dados ficam no PostgreSQL da VM e chegam pela JT API /query.
 """
 from __future__ import annotations
 
 import hmac
 import os
-import threading
-import uuid
-import zipfile
+import time
+from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+import httpx
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
-from importar_excel import DATA, ENTRADAS, run_import
-
 ROOT = Path(__file__).resolve().parent
-app = FastAPI(title='J&T | Avaria • Extravio • PNR', docs_url=None, redoc_url=None)
+load_dotenv(ROOT / ".env", override=False)
+app = FastAPI(title="J&T | Avaria • Extravio • PNR", docs_url=None, redoc_url=None)
 security = HTTPBasic(auto_error=False)
-import_lock = threading.Lock()
-app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
+app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+
+API_URL = os.getenv("JT_API_URL", "https://jt-api.rockettechbr.com.br").strip().rstrip("/")
+TABLE = "jt_arbitragem_ocorrencias"
+
+# Campos fixos, sem interpolar dados fornecidos por usuários na consulta SQL.
+COLS = (
+    "chave", "declaracao", "remessa", "primaria", "secundaria", "status",
+    "declarada_em", "fechada_em", "base_responsavel", "base", "codigo_base",
+    "uf", "rm", "coordenador", "supervisor", "tipo", "modalidade",
+    "valor_centavos", "data", "descricao", "comentario_decisao",
+    "comentario_contestacao",
+)
+QUERY = (
+    "SELECT " + ", ".join(COLS) +
+    " FROM public." + TABLE +
+    " WHERE POSITION('ORLEAN' IN UPPER(COALESCE(rm, ''))) > 0"
+    " ORDER BY data DESC NULLS LAST, chave DESC"
+)
+PAGE_SIZE = 500
+MAX_ROWS = 100000
 
 
 def authorize(credentials: HTTPBasicCredentials | None = Depends(security)):
-    user = os.environ.get('DASH_USER', '')
-    password = os.environ.get('DASH_PASSWORD', '')
-    local = os.environ.get('APP_ENV', 'production').lower() == 'local'
-    if not user and not password and local:
+    user = os.getenv("DASH_USER", "")
+    password = os.getenv("DASH_PASSWORD", "")
+    local = os.getenv("APP_ENV", "production").lower() == "local"
+    if local and not user and not password:
         return True
     if not user or not password:
-        raise HTTPException(503, 'Configure DASH_USER e DASH_PASSWORD no ambiente de produção.')
-    if not credentials or not (hmac.compare_digest(credentials.username, user)
-                               and hmac.compare_digest(credentials.password, password)):
-        raise HTTPException(401, 'Credenciais inválidas.',
-                            headers={'WWW-Authenticate': 'Basic realm="J&T Indicadores"'})
+        raise HTTPException(503, "Defina DASH_USER e DASH_PASSWORD no Render.")
+    if credentials is None or not (
+        hmac.compare_digest(credentials.username, user)
+        and hmac.compare_digest(credentials.password, password)
+    ):
+        raise HTTPException(
+            401, "Usuário ou senha inválidos.",
+            headers={"WWW-Authenticate": 'Basic realm="J&T Indicadores"'},
+        )
     return True
 
 
-@app.get('/')
-def home(_=Depends(authorize)):
-    return FileResponse(ROOT / 'static' / 'index.html', headers={'Cache-Control': 'no-store'})
+def rows_of(result, columns=COLS):
+    """Aceita o formato {rows,colunas}, lista de objetos ou linhas posicionais."""
+    if isinstance(result, dict):
+        colunas = result.get("colunas") or columns
+        for name in ("rows", "data", "result", "resultado", "registros"):
+            if isinstance(result.get(name), list):
+                return rows_of(result[name], colunas)
+        raise RuntimeError("Formato desconhecido de resposta da JT API.")
+    if not isinstance(result, list):
+        raise RuntimeError("JT API /query não retornou uma lista de linhas.")
+    output = []
+    for row in result:
+        if isinstance(row, dict):
+            output.append(row)
+        elif isinstance(row, (list, tuple)) and len(row) == len(columns):
+            output.append(dict(zip(columns, row)))
+        else:
+            raise RuntimeError("Colunas da JT API não correspondem ao SQL do indicador.")
+    return output
 
 
-@app.get('/api/health')
-def health():
-    return {'status': 'ok', 'indicador': 'avaria_extravio_pnr',
-            'dados_carregados': (DATA / 'painel.json').exists()}
-
-
-@app.get('/api/dados')
-def data(_=Depends(authorize)):
-    path = DATA / 'painel.json'
-    if not path.is_file():
-        raise HTTPException(404, 'Ainda não existem dados. Importe Gestão e Arbitragem no painel.')
-    return FileResponse(path, media_type='application/json',
-                        headers={'Cache-Control': 'no-store, max-age=0', 'X-Content-Type-Options': 'nosniff'})
-
-
-@app.post('/api/importar')
-def upload(arquivos: list[UploadFile] = File(...), _=Depends(authorize)):
-    """Recebe XLSX, atualiza histórico e refaz a correspondência com a gestão."""
-    if not 1 <= len(arquivos) <= 12:
-        raise HTTPException(400, 'Selecione de 1 a 12 arquivos XLSX por importação.')
-    if not import_lock.acquire(blocking=False):
-        raise HTTPException(409, 'Já existe uma importação em andamento.')
+def query_api(sql: str, params: list):
+    if not API_URL.startswith("https://"):
+        raise HTTPException(503, "JT_API_URL deve ser a URL HTTPS da JT API.")
+    key = os.getenv("JT_API_KEY", "").strip()
+    if not key:
+        raise HTTPException(503, "Configure JT_API_KEY no servidor Render.")
     try:
-        ENTRADAS.mkdir(parents=True, exist_ok=True)
-        saved = []
-        for upload_file in arquivos:
-            name = (upload_file.filename or '').replace('\\', '/').split('/')[-1].strip()
-            if not name.lower().endswith('.xlsx') or len(name) > 190 or name.startswith('~$'):
-                raise HTTPException(400, f'Arquivo não permitido: {name[:70]}')
-            tmp = ENTRADAS / f'.upload_{uuid.uuid4().hex}.tmp'
-            size = 0
-            try:
-                with tmp.open('wb') as f:
-                    while chunk := upload_file.file.read(1024 * 1024):
-                        size += len(chunk)
-                        if size > 25 * 1024 * 1024:
-                            raise HTTPException(413, f'{name}: arquivo acima do limite de 25 MB.')
-                        f.write(chunk)
-                if not zipfile.is_zipfile(tmp):
-                    raise HTTPException(400, f'{name}: não é um XLSX válido.')
-                with zipfile.ZipFile(tmp) as z:
-                    if sum(e.file_size for e in z.infolist()) > 150 * 1024 * 1024 or len(z.infolist()) > 3000:
-                        raise HTTPException(413, f'{name}: conteúdo do XLSX muito grande.')
-                    if 'xl/worksheets/sheet1.xml' not in z.namelist():
-                        raise HTTPException(400, f'{name}: primeira aba não localizada.')
-                tmp.replace(ENTRADAS / name)
-                saved.append(name)
-            finally:
-                tmp.unlink(missing_ok=True)
+        response = httpx.post(
+            API_URL + "/query",
+            headers={"X-API-Key": key},
+            json={"sql": sql, "params": params},
+            timeout=httpx.Timeout(120.0, connect=15.0),
+        )
+    except httpx.HTTPError:
+        raise HTTPException(503, "A JT API está indisponível ou inacessível.") from None
+    if response.status_code != 200:
+        if response.status_code in (401, 403):
+            raise HTTPException(503, "JT_API_KEY não autorizada pela JT API.")
+        if response.status_code >= 500:
+            raise HTTPException(503, "Falha na consulta do PostgreSQL pela JT API.")
+        raise HTTPException(
+            503,
+            "A consulta de arbitragem falhou. Confira a tabela "
+            "jt_arbitragem_ocorrencias no PostgreSQL e as permissões da JT API.",
+        )
+    try:
+        return rows_of(response.json())
+    except (ValueError, RuntimeError):
+        raise HTTPException(503, "JT API retornou um formato inválido para o indicador.") from None
+
+
+def read_database():
+    all_rows = []
+    offset = 0
+    while True:
+        batch = query_api(QUERY + " LIMIT %s OFFSET %s", [PAGE_SIZE, offset])
+        all_rows.extend(batch)
+        if len(all_rows) > MAX_ROWS:
+            raise HTTPException(503, "O histórico excede 100.000 ocorrências; implementar consulta por período.")
+        if len(batch) < PAGE_SIZE:
+            break
+        offset += len(batch)
+    return all_rows
+
+
+def normalize_rows(records):
+    out = []
+    for row in records:
+        item = {name: row.get(name) for name in COLS}
+        item["data"] = str(item.get("data") or "")[:10]
+        item["fechada_em"] = str(item.get("fechada_em") or "")[:10]
+        item["declarada_em"] = str(item.get("declarada_em") or "")[:10]
+        for field in ("chave", "declaracao", "remessa", "primaria", "secundaria",
+                      "status", "base_responsavel", "base", "codigo_base", "uf",
+                      "rm", "coordenador", "supervisor", "tipo", "modalidade",
+                      "descricao", "comentario_decisao", "comentario_contestacao"):
+            item[field] = str(item.get(field) or "").strip()
         try:
-            result = run_import()
-        except (ValueError, OSError, zipfile.BadZipFile) as exc:
-            raise HTTPException(422, f'Falha ao interpretar os arquivos: {exc}') from exc
-        return {'status': 'ok', 'arquivos': saved,
-                'total': result['total_ativos'], 'por_tipo': result['qtd_por_tipo'],
-                'total_reais': result['valor_total_centavos'] / 100}
-    finally:
-        import_lock.release()
+            item["valor_centavos"] = int(item.get("valor_centavos") or 0)
+        except (TypeError, ValueError):
+            raise HTTPException(503, "Valor financeiro inválido no banco; revise valor_centavos.") from None
+        if item["tipo"] not in {"Avaria", "Extravio", "PNR"}:
+            raise HTTPException(503, "Indicador inválido cadastrado na arbitragem: revise a origem dos dados.")
+        out.append(item)
+    return out
 
 
-if __name__ == '__main__':
+def bundle(records):
+    rows = normalize_rows(records)
+    types = ("Avaria", "Extravio", "PNR")
+    quantities = Counter(r["tipo"] for r in rows)
+    dates = sorted(r["data"] for r in rows if r["data"])
+    amounts = {group: sum(r["valor_centavos"] for r in rows if r["tipo"] == group)
+               for group in types}
+    return {
+        "meta": {
+            "origem": ["PostgreSQL jt_indicadores / JT API /query"],
+            "rm": "ORLEAN",
+            "moeda": "BRL",
+            "coluna_data": "Data fechamento (AC); fallback data declaração (L)",
+            "total_na_exportacao": None,
+            "total_ativos": len(rows),
+            "qtd_por_tipo": {group: quantities[group] for group in types},
+            "valor_por_tipo_centavos": amounts,
+            "valor_total_centavos": sum(r["valor_centavos"] for r in rows),
+            "datas": {"min": dates[0] if dates else "", "max": dates[-1] if dates else ""},
+            "bases_gestao_orlean": None,
+            "bases_ofensoras": len({r["codigo_base"] or r["base"] for r in rows}),
+            "sem_correspondencia_global": None,
+            "sem_correspondencia_detalhes": [],
+            "fora_escopo_orlean": None,
+            "criterio": "Consulta central JT API /query; sem upload pelo dashboard. Valores em BRL.",
+        },
+        "rows": rows,
+    }
+
+
+@lru_cache(maxsize=4)
+def cached_data(bucket: int):
+    return bundle(read_database())
+
+
+@app.get("/")
+def home(_=Depends(authorize)):
+    return FileResponse(ROOT / "static" / "index.html",
+                        headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/health")
+def health():
+    return {
+        "status": "ok", "indicador": "avaria_extravio_pnr",
+        "fonte": "jt-api", "api_configurada": bool(os.getenv("JT_API_KEY")),
+        "tabela": TABLE,
+    }
+
+
+@app.get("/api/dados")
+def data(_=Depends(authorize)):
+    ttl = max(5, int(os.getenv("JT_API_CACHE_SECONDS", "60")))
+    result = cached_data(int(time.time() // ttl))
+    return result
+
+
+if __name__ == "__main__":
     import uvicorn
-    os.environ.setdefault('APP_ENV', 'local')
-    # No modo sem senha, a interface fica acessível apenas neste computador.
-    host = '127.0.0.1' if not os.getenv('DASH_PASSWORD') else '0.0.0.0'
-    uvicorn.run(app, host=host, port=int(os.getenv('PORT', '8000')))
+    os.environ.setdefault("APP_ENV", "local")
+    host = "127.0.0.1" if not os.getenv("DASH_PASSWORD") else "0.0.0.0"
+    uvicorn.run(app, host=host, port=int(os.getenv("PORT", "8000")))
