@@ -1,105 +1,135 @@
-# J&T Express — Avaria • Extravio • PNR
+# J&T Express — Avaria, Extravio e PNR
 
-Dashboard operacional interno, no padrão visual dos indicadores J&T **SLA e Shipping Time**. Um único projeto com três abas independentes e os mesmos filtros de gestão.
+**Painel de consulta do PostgreSQL existente**, usando a **JT Server API v2.0** hospedada no servidor Windows da empresa e publicada pelo Cloudflare Tunnel: https://jt-api.rockettechbr.com.br.
 
-## Indicadores e regras
+O dashboard **não recebe planilhas e não possui botão de importação**. No Render, o backend acessa a JT API por \`POST /query\`, com a credencial \`X-API-Key\` guardada no ambiente do servidor. O navegador nunca recebe a chave ou executa SQL arbitrário. Os dados não precisam ser enviados ao GitHub ou guardados no disco do Render.
 
-| Aba | `D` — anomalia primária |
-| --- | --- |
-| **Avaria** | `AVARIA 破损` |
-| **Extravio** | `EXTRAVIO-遗失` e `FORA DO PRAZO SLA CADEIA 超SLA时效延误` |
-| **PNR** | `Reivindicações rápidas/投诉理赔` |
+## Indicadores
 
-**PNR não entra mais na soma de Extravio.** SLA Cadeia continua em Extravio, mas pode ser filtrado separadamente em *Origem do extravio*. Outros tipos de origem ficam fora dessas três abas.
+| Aba | Coluna D (anomalia primária) |
+|---|---|
+| Avaria | AVARIA 破损 |
+| Extravio | EXTRAVIO-遗失 **ou** FORA DO PRAZO SLA CADEIA 超SLA时效延误 |
+| PNR | Reivindicações rápidas/投诉理赔 |
 
-Campos do relatório: `B` remessa; `D` anomalia primária; `E` secundária; `AE` base responsável; `AG` valor a pagar em **reais** (apesar do rótulo yuan); `L` data da declaração; `AC` fechamento; `AB`, `AK`, `AL` descrições de auditoria.
+**PNR não entra na aba de Extravio.** Extravio convencional e SLA Cadeia ficam na mesma aba, com filtro por origem.
 
-O vínculo com a **Gestão de Colaboradores** usa o nome da base em `AE`, com normalização de caixa, espaços e acentos, buscando R/M, coordenador, supervisor, UF e código. Apenas bases reconhecidas do **R/M Orlean** integram os KPIs. Bases sem correspondência são apontadas na conferência global, **não atribuídas a ninguém**. Gestões conflitantes não são adivinhadas.
+Cada aba tem KPIs de custo, quantidade, bases e S/C envolvidos; evoluções diária/semanal (semana de segunda a domingo e comparações semanais), rankings de bases, coordenadores e supervisores, tabela de anomalias secundárias para auditoria, detalhamento e downloads em CSV.
 
-**Critério de contagem:** cada linha válida de responsabilização (declaração + remessa + base + ordinal de ocorrências repetidas na planilha) conta uma ocorrência. A mesma remessa pode responsabilizar mais de uma base; não fazer `drop_duplicates` só pelo número da remessa. Totais dos rankings de **Coordenador** e **Supervisor** não devem ser somados entre cargos, pois uma ocorrência pode ser atribuída aos dois. Cada valor vem em centavos para impedir erro de ponto flutuante.
+O filtro R/M permanece Orlean, e os demais filtros são data, UF, base, coordenador, supervisor, S/C, anomalia secundária e busca por remessa/declaração. Os valores da coluna AG já estão em **reais (BRL)** e não recebem conversão cambial.
 
-## Funcionalidades
+## Arquitetura real do projeto
 
-- Três abas independentes, com filtros de data, UF, S/C (coordenador **ou** supervisor), coordenador, supervisor, base, secundária e busca de remessa/declaração.
-- Filtro específico **Extravio convencional / SLA Cadeia** na aba de Extravio.
-- 4 KPIs: valor, ocorrências, bases ofensoras e responsáveis envolvidos; custo médio e comparações anteriores.
-- Evolução diária ou semanal (semanas sempre **segunda a domingo**); quantidade ou valor; referência deslocada de 7 dias.
-- Rankings de bases e responsáveis, ordenáveis por quantidade/custo, completos e exportáveis.
-- Auditoria das anomalias secundárias com colunas originais D/E; nenhum julgamento automático de coerência.
-- Remessas detalhadas, com descrição/decisão/contestação, paginação e **CSV por aba e filtros** com campos vazios para avaliação do S/C.
-- Importador idempotente: novos relatórios atualizam o histórico por identidade da responsabilização; nova Gestão reaplica os vínculos ao histórico inteiro.
-- Importação de XLSX pela interface autenticada ou pelo comando Python, sem bibliotecas de leitura de planilha.
-- Autenticação HTTP Basic nas rotas que servem dados e recebem planilhas; HTML e JS não contêm informações privadas no GitHub.
+\`\`\`text
+Usuário (navegador)
+     │
+     │ HTTPS /api/dados  (autenticação do dashboard)
+     ▼
+Render · FastAPI app.py
+     │
+     │ POST https://jt-api.rockettechbr.com.br/query
+     │ Header X-API-Key
+     │ SQL fixo e paginado
+     ▼
+JT SERVER · Cloudflare Tunnel · FastAPI
+     │
+     ▼
+VM Windows · PostgreSQL · jt_indicadores
+     └── public.jt_arbitragem_ocorrencias
+\`\`\`
 
-## Executar no Windows
+**Atenção:** o servidor PostgreSQL e a rota genérica \`/query\` já existem. A tabela específica \`jt_arbitragem_ocorrencias\` é a integração deste novo indicador: **não foi verificado que ela exista no banco**. O dashboard exibirá um erro claro até que a tabela seja alimentada. Nenhuma consulta fabricará dados quando a API estiver offline.
 
-Requer Python 3.11 ou superior. No PowerShell:
+### Campos armazenados na tabela
 
-```powershell
-cd "C:\caminho\J-T-AVARIA-EXTRAVIO-PNR"
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python app.py
-```
+\`chave\`, \`declaracao\`, \`remessa\`, \`primaria\`, \`secundaria\`, \`status\`, \`declarada_em\`, \`fechada_em\`, \`base_responsavel\`, \`base\`, \`codigo_base\`, \`uf\`, \`rm\`, \`coordenador\`, \`supervisor\`, \`tipo\`, \`modalidade\`, \`valor_centavos\`, \`data\`, \`descricao\`, \`comentario_decisao\`, \`comentario_contestacao\`.
 
-Abra `http://127.0.0.1:8000`. No modo `python app.py`, se **nenhuma senha** estiver configurada, o servidor fica acessível **apenas neste computador**, para desenvolvimento local.
+A chave estável distingue declaração, remessa, base e ocorrências repetidas para manter UPSERT idempotente. O SQL seleciona somente linhas do R/M Orlean e devolve até 100 mil ocorrências (acima disso, é exibido erro explícito, sem ocultar dados).
 
-### Importar dados (interface)
+As informações de gestão são resolvidas na rotina ETL; **o painel não inventa coordenador nem supervisor** quando uma base não é encontrada. A auditoria de bases sem vínculo precisa ser feita na origem/carga, antes da inclusão no recorte Orlean.
 
-1. Expanda **Importar novas planilhas XLSX** no fim do dashboard.
-2. Selecione a planilha de **Gestão de colaboradores** e um ou mais arquivos de **Exportar formulário de declaração de arbitragem**. A primeira aba de cada planilha precisa seguir o modelo enviado.
-3. Clique em **Importar e atualizar dashboard**. Os arquivos e o histórico são salvos na pasta `entradas/` e `dados/`.
-4. Cargas posteriores podem conter somente relatórios de arbitragem. Quando a Gestão mudar, importe a nova versão para atualizar os vínculos históricos.
+## Executar no PC com VS Code
 
-### Importar pelo terminal
+Na pasta do repositório:
 
-Copie os arquivos `.xlsx` para `entradas/` e execute:
+\`\`\`powershell
+python --version
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+\`\`\`
 
-```powershell
-python importar_excel.py
-```
+Copie \`.env.example\` para \`.env\`:
 
-O importador aceita **vários arquivos de dias diferentes**, preserva registros já existentes e atualiza o painel. Para descartar o histórico existente e reconstruir tudo apenas com os arquivos disponíveis, execute `python importar_excel.py --zerar-historico` **somente se tiver backup**.
+\`\`\`powershell
+Copy-Item .env.example .env
+\`\`\`
 
-**Arquivos produzidos:** `dados/historico.json.gz`, `dados/gestao.json` e `dados/painel.json` — **não enviar ao GitHub**.
+No arquivo \`.env\` local, mantenha \`APP_ENV=local\` e configure a **sua chave existente** \`JT_API_KEY\`. Não coloque essa chave no GitHub.
 
-## Configurar no Render
+Inicie:
 
-O repositório contém `render.yaml` para `Blueprint`, ou configure um Web Service Python com:
+\`\`\`powershell
+.\.venv\Scripts\python.exe app.py
+\`\`\`
 
-- **Build:** `pip install -r requirements.txt`
-- **Start:** `uvicorn app:app --host 0.0.0.0 --port $PORT`
-- **Health check:** `/api/health`
-- **Variáveis de ambiente:** `APP_ENV=production`, `DASH_USER` e `DASH_PASSWORD` fortes.
+Abra http://127.0.0.1:8000. Mesmo no modo local, **é obrigatório configurar JT_API_KEY** para o backend consultar a API. Somente o login do próprio dashboard é dispensado em desenvolvimento local.
 
-**Dados não vêm pré-carregados do GitHub público.** Depois de publicar, abra o painel com usuário/senha e importe Gestão + Arbitragem pelo formulário. No **Render Free**, o disco é **efêmero**: planilhas e dados importados podem desaparecer após reinício/redeploy. Para persistência, crie um serviço com **Persistent Disk**, configure a montagem (ex.: `/var/data`) e `JT_STORAGE=/var/data/jt`. Faça backup do diretório `JT_STORAGE` periodicamente. Se estiver usando um banco PostgreSQL em uma VM, **esta versão não se conecta automaticamente a ele** — essa integração seria separada.
+## Como alimentar o banco (sem upload no dashboard)
 
-Para produção, não publique planilhas, CSVs, screenshots reais ou o HTML de prévia no GitHub. O `.gitignore` protege os arquivos mais comuns, mas verifique o `git status` antes de cada push. O repositório público não substitui autenticação, cuidado com os downloads e gestão de acessos.
+A consulta no painel só funciona com a tabela de arbitragens preenchida. O script \`publicar_postgres_via_api.py\` segue a mesma arquitetura de carga dos outros indicadores J&T: no **PC operacional**, lê o histórico local, atualiza o cruzamento com a Gestão e faz UPSERT por meio da **rota \`POST /import\` já existente na JT API**.
 
-## Comandos de conferência
+Coloque os XLSX da Arbitragem e a planilha Gestão de Colaboradores na pasta local \`entradas/\`. Não inclua os arquivos na publicação do Render e não envie ao GitHub.
 
-```powershell
-python -m unittest discover -s tests -v
-python importar_excel.py
-python criar_previa.py
-```
+Para validar sem enviar nenhum registro:
 
-`criar_previa.py` gera um HTML autônomo **com todos os dados reais embutidos**, exclusivo para uso local. **Não publique esse arquivo.**
+\`\`\`powershell
+.\.venv\Scripts\python.exe publicar_postgres_via_api.py
+\`\`\`
 
-## Estrutura
+Para autorizar a carga no banco:
 
-```text
-app.py                   FastAPI + Basic Auth + importação pelo painel
-importar_excel.py        Parser XLSX em streaming, histórico, vínculo gestão
-static/index.html        Tela 3 abas
-static/style.css         Padrão visual SLA / Shipping Time
-static/app.js            Filtros, gráficos SVG, rankings, CSV e navegação
-render.yaml              Serviço Render
-requirements.txt         Dependências do servidor
-.env.example             Exemplo de variáveis sem senhas reais
-criar_previa.py          Gera HTML offline local (dados não vão ao GitHub)
-tests/test_importer.py   Testes sintéticos de classificação e reconciliação
-entradas/                XLSX privados (ignorados no Git)
-dados/                   Histórico privado (ignorado no Git)
-```
+\`\`\`powershell
+.\.venv\Scripts\python.exe publicar_postgres_via_api.py --aplicar
+\`\`\`
+
+A rotina reutiliza \`importar_excel.py\` **somente no PC operacional**, como etapa de ETL, nunca como upload por usuários no dashboard. Isso permite integrar o script à rotina diária/agendada de cargas da J&T sem mudar a interface.
+
+A tabela pode ser criada automaticamente pelo endpoint genérico \`/import\` quando a API permitir essa operação; a criação e o primeiro envio precisam ser feitos antes do painel online mostrar as ocorrências. O script valida acesso antes de realizar UPSERT. A base histórica privada \`dados/\` fica excluída do Git.
+
+**Não é possível inferir valores de arbitragem apenas das tabelas SLA, Shipping Time e T0.** É necessário que essas ocorrências tenham sido carregadas na tabela própria. A API já existente transporta e consulta os dados, mas não cria as informações de origem.
+
+## Deploy Render
+
+Conecte o repositório em **New → Blueprint** ou configure:
+
+- **Build command:** \`pip install -r requirements.txt\`
+- **Start command:** \`uvicorn app:app --host 0.0.0.0 --port $PORT\`
+- **Health check:** \`/api/health\`
+- **Environment:** \`APP_ENV=production\`, \`JT_API_URL=https://jt-api.rockettechbr.com.br\`, \`JT_API_KEY\` (secreta), \`DASH_USER\` e \`DASH_PASSWORD\` (secretos).
+
+Não é necessário configurar disco persistente no Render. A tabela fica na VM e existe cache de até 60 segundos por instância para a consulta do dashboard. Se a VM ou o Cloudflare Tunnel estiverem offline, o dashboard informará indisponibilidade em vez de mostrar números inventados.
+
+## Arquivos
+
+\`\`\`text
+app.py                        FastAPI, autenticação, consulta paginada à JT API
+static/index.html             Três abas, KPIs, filtros, tabelas e auditoria
+static/style.css              Visual compatível SLA / Shipping Time
+static/app.js                 Filtros, evolução, rankings e exportação CSV
+publicar_postgres_via_api.py  ETL do PC → POST /import → banco J&T
+importar_excel.py             Leitura/deduplicação da fonte, somente no PC ETL
+requirements.txt              Dependências
+render.yaml                   Blueprint do Render
+.env.example                  Modelo de variáveis sem chaves reais
+tests/                        Testes sintéticos sem informações operacionais
+\`\`\`
+
+## Validação
+
+\`\`\`powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+\`\`\`
+
+O GitHub Actions executa os testes e confere se não existem planilhas e histórico privados versionados. O dashboard não oferece importação de arquivos XLSX nem registra tokens no JavaScript.
+
+**Privacidade:** este repositório é público. Nunca suba \`.env\`, a chave \`JT_API_KEY\`, arquivos \`.xlsx\` ou diretórios \`entradas/\` e \`dados/\`.
