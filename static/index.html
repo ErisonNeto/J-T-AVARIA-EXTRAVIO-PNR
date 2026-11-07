@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#d71920" />
   <meta name="description" content="Indicadores internos de qualidade J&T: Avaria, Extravio e PNR." />
   <title>J&T Express | Avaria · Extravio · PNR</title>
-  <link rel="stylesheet" href="/static/style.css?v=3abas-status-fechamento-7" />
-  <script defer src="/static/app.js?v=3abas-status-fechamento-7"></script>
+  <link rel="stylesheet" href="/static/style.css?v=3abas-status-auditoria-8" />
+  <script defer src="/static/app.js?v=3abas-status-auditoria-8"></script>
 </head>
 <body>
   <header class="topbar">
@@ -30,7 +30,7 @@
 
     <section class="filters-panel" aria-label="Filtros da visão">
       <div class="section-head">
-        <div><span class="eyebrow">CONTROLE DE VISÃO</span><h2>Filtros operacionais</h2><p>Os filtros permanecem ao trocar de aba. Cada indicador tem dados e rankings independentes.</p></div>
+        <div><span class="eyebrow">CONTROLE DE VISÃO</span><h2>Filtros operacionais</h2><p>Os filtros permanecem ao trocar de aba. Cada indicador tem dados e rankings independentes. Os custos principais excluem Revogado e Apelação.</p></div>
         <div class="head-actions"><button class="btn btn-light" id="resetFilters" type="button">Limpar filtros</button></div>
       </div>
       <div class="filters-grid">
@@ -49,8 +49,8 @@
     </section>
 
     <section class="cards" aria-label="Indicadores principais">
-      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Valor a pagar</span><span class="kpi-icon">R$</span></div><strong id="kValue">—</strong><small>Valores da coluna AG já em reais</small></article>
-      <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Ocorrências</span><span class="kpi-icon">Σ</span></div><strong id="kCount">—</strong><small>Responsabilizações no período</small></article>
+      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Valor a pagar</span><span class="kpi-icon">R$</span></div><strong id="kValue">—</strong><small>Somente arbitragem finalizada · Coluna AG em reais</small></article>
+      <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Ocorrências</span><span class="kpi-icon">Σ</span></div><strong id="kCount">—</strong><small>Somente tickets finalizados no período</small></article>
       <article class="card kpi-card kpi-danger"><div class="kpi-head"><span>Bases ofensoras</span><span class="kpi-icon">!</span></div><strong id="kBases">—</strong><small>Unidades identificadas na Gestão</small></article>
       <article class="card kpi-card kpi-success"><div class="kpi-head"><span>Responsáveis S/C</span><span class="kpi-icon">◎</span></div><strong id="kManagers">—</strong><small>Coordenadores e supervisores distintos</small></article>
     </section>
@@ -88,8 +88,26 @@
       <div class="table-wrap"><table><thead><tr><th>Anomalia primária (D)</th><th>Anomalia secundária (E)</th><th class="num">Qtd.</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="secondaryRows"></tbody></table></div>
     </section>
 
+    <section class="panel review-panel" id="emConferencia" aria-label="Registros revogados ou em apelação">
+      <div class="section-head panel-head">
+        <div>
+          <span class="eyebrow">CONFERÊNCIA DE ARBITRAGENS</span>
+          <h2>Revogados e em apelação</h2>
+          <p>Ocorrências armazenadas para auditoria e excluídas dos KPIs, rankings, custos e evolutivos principais. Mesmos filtros e período da aba atual.</p>
+        </div>
+        <button class="btn btn-outline" id="downloadReview" type="button">Baixar registros em conferência (CSV)</button>
+      </div>
+      <div class="review-totals">
+        <div><span>Ocorrências em conferência</span><strong id="reviewCount">0</strong></div>
+        <div><span>Valor sob análise (não incluído no total a pagar)</span><strong id="reviewValue">R$ 0,00</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Situação</th><th class="num">Quantidade</th><th class="num">Valor sob análise</th></tr></thead><tbody id="reviewRows"></tbody></table>
+      </div>
+    </section>
+
     <section class="panel detail-panel" id="detalhamento">
-      <div class="section-head panel-head"><div><span class="eyebrow">AUDITORIA E EXPORTAÇÃO</span><h2>Detalhamento das remessas</h2><p>Dados por data de fechamento; data da declaração disponível no detalhamento e no CSV. Uma linha por responsabilização.</p></div><div class="head-actions"><button class="btn btn-outline" id="downloadBases2" type="button">Ranking de bases</button><button class="btn btn-primary" id="downloadDetails" type="button">Baixar base filtrada (CSV)</button></div></div>
+      <div class="section-head panel-head"><div><span class="eyebrow">AUDITORIA E EXPORTAÇÃO</span><h2>Detalhamento das remessas</h2><p>Dados por data de fechamento; data da declaração disponível no detalhamento e no CSV. Uma linha por responsabilização finalizada.</p></div><div class="head-actions"><button class="btn btn-outline" id="downloadBases2" type="button">Ranking de bases</button><button class="btn btn-primary" id="downloadDetails" type="button">Baixar base filtrada (CSV)</button></div></div>
       <div class="detail-info" id="detailCount">—</div>
       <div class="table-wrap detail-wrap"><table><thead><tr><th>Fechamento</th><th>Nº remessa</th><th>Tipo secundário</th><th>Base</th><th>Coordenador</th><th>Supervisor</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="detailRows"></tbody></table></div>
       <div class="pager"><span id="pageStatus">—</span><div><button id="pagePrev" type="button" aria-label="Página anterior">Anterior</button><button id="pageNext" type="button" aria-label="Página seguinte">Próxima</button></div></div>
