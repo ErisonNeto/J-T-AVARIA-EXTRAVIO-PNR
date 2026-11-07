@@ -14,7 +14,7 @@ const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,
 const shiftDay = (s, delta) => {const d=dateObj(s);d.setDate(d.getDate()+delta);return localISO(d)};
 const monday = (s) => {const d=dateObj(s); d.setDate(d.getDate()-(d.getDay()+6)%7);return localISO(d)};
 const sum = (rows) => rows.reduce((a,r)=>a+Number(r.valor_centavos||0),0);
-const filterIds = ['uf','sc','base','secundaria','modalidade'];
+const filterIds = ['sc','base','secundaria','modalidade'];
 let data = {meta:{datas:{}},rows:[]};
 let active = 'Avaria';
 let allForTab = [], filtered = [];
@@ -29,7 +29,6 @@ function fillSelect(id, values, fallback){const el=$(id),prev=el.value;el.innerH
 function managers(row){return unique([row.coordenador,row.supervisor]);}
 function categoryRows(){return data.rows.filter(r=>r.tipo===active);}
 function filtersWithoutDate(rows){const q=$('search').value.trim().toLowerCase();return rows.filter(r=>{
-  if($('uf').value && r.uf!==$('uf').value)return false;
   if($('base').value && r.base!==$('base').value)return false;
   if($('sc').value && !managers(r).includes($('sc').value))return false;
   if($('secundaria').value && r.secundaria!==$('secundaria').value)return false;
@@ -39,7 +38,6 @@ function filtersWithoutDate(rows){const q=$('search').value.trim().toLowerCase()
 function inPeriod(rows,start,end){return rows.filter(r=>(!start||r.data>=start)&&(!end||r.data<=end));}
 function refreshFilters(){
   allForTab=categoryRows();
-  fillSelect('uf',allForTab.map(r=>r.uf),'Todas');
   fillSelect('base',allForTab.map(r=>r.base),'Todas');
   fillSelect('sc',allForTab.flatMap(managers),'Todos');
   fillSelect('secundaria',allForTab.map(r=>r.secundaria),'Todas');
