@@ -176,6 +176,9 @@ def bundle(records):
     rows = normalize_rows(records)
     types = ("Avaria", "Extravio", "PNR")
     quantities = Counter(r["tipo"] for r in rows)
+    finalizados = [r for r in rows if r["situacao_financeira"] == "finalizado"]
+    conferencia = [r for r in rows if r["situacao_financeira"] == "conferencia"]
+    quantities_final = Counter(r["tipo"] for r in finalizados)
     dates = sorted(r["data"] for r in rows if r["data"])
     amounts = {group: sum(r["valor_centavos"] for r in rows if r["tipo"] == group)
                for group in types}
@@ -189,14 +192,24 @@ def bundle(records):
             "total_ativos": len(rows),
             "qtd_por_tipo": {group: quantities[group] for group in types},
             "valor_por_tipo_centavos": amounts,
+            # Legado: campos anteriores são totais BRUTOS de todas as situações.
             "valor_total_centavos": sum(r["valor_centavos"] for r in rows),
+            "total_finalizados": len(finalizados),
+            "valor_finalizados_centavos": sum(r["valor_centavos"] for r in finalizados),
+            "qtd_finalizados_por_tipo": {t: quantities_final[t] for t in types},
+            "valor_finalizados_por_tipo_centavos": {
+                t: sum(r["valor_centavos"] for r in finalizados if r["tipo"] == t)
+                for t in types
+            },
+            "total_conferencia": len(conferencia),
+            "valor_conferencia_centavos": sum(r["valor_centavos"] for r in conferencia),
             "datas": {"min": dates[0] if dates else "", "max": dates[-1] if dates else ""},
             "bases_gestao_orlean": None,
             "bases_ofensoras": len({r["codigo_base"] or r["base"] for r in rows}),
             "sem_correspondencia_global": None,
             "sem_correspondencia_detalhes": [],
             "fora_escopo_orlean": None,
-            "criterio": "Consulta central JT API /query; sem upload pelo dashboard. Valores em BRL.",
+            "criterio": "Fechamento AC; KPIs apenas Processo encerrado / Arbitragem finalizada. Revogado, apelações e demais status ficam em conferência. Valores em BRL.",
         },
         "rows": rows,
     }
