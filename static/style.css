@@ -20,3 +20,16 @@
 .chart-tooltip-row b{font-size:13px;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
 .chart-tooltip-previous{margin-top:9px;border-top:1px solid #475569;padding-top:8px;color:#cbd5e1;font-size:10px}
 @media(max-width:760px){.chart-tooltip{width:205px;padding:9px 11px}.chart-point-label{font-size:11px}}
+
+/* Conferência separada dos valores excluídos dos indicadores financeiros. */
+.review-panel{margin-top:14px;margin-bottom:14px;overflow:hidden}
+.review-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:8px 20px 18px}
+.review-totals>div{padding:16px;border:1px solid var(--border);border-radius:11px;background:#fafbfc;display:flex;flex-direction:column;gap:7px}
+.review-totals span{color:var(--muted);font-size:11px;font-weight:700}
+.review-totals strong{font-size:24px;font-weight:850;font-variant-numeric:tabular-nums;color:var(--text)}
+.review-panel .table-wrap{padding:0 20px 18px}
+.review-panel table{width:100%;border-collapse:collapse}
+.review-panel th,.review-panel td{padding:12px;border-bottom:1px solid var(--border);font-size:12px;text-align:left}
+.review-panel th.num,.review-panel td.num{text-align:right;font-variant-numeric:tabular-nums}
+.review-panel th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.025em}
+@media(max-width:700px){.review-totals{grid-template-columns:1fr;gap:8px;padding:8px 14px 12px}.review-panel .table-wrap{padding:0 14px 14px}.review-totals strong{font-size:20px}}
