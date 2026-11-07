@@ -24,8 +24,8 @@ class ChartPointTests(unittest.TestCase):
         html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
         self.assertIn(".chart-tooltip[hidden]{display:none}", css)
         self.assertIn(".chart-hit-point{fill:transparent;pointer-events:all}", css)
-        self.assertIn("Passe o mouse ou toque em um ponto", html)
-        self.assertIn("v=3abas-evolucao-pontos-5", html)
+        self.assertIn("Evolução por data da declaração (coluna L). Passe o mouse ou toque", html)
+        self.assertIn("v=3abas-datadeclaracao-6", html)
 
 
 if __name__ == "__main__":
