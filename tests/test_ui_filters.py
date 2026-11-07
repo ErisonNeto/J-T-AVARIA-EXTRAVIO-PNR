@@ -25,6 +25,15 @@ class FilterLayoutTests(unittest.TestCase):
         self.assertIn("Coordenadores e supervisores", html)
         self.assertIn("Coordenador / Supervisor", html)
 
+    def test_responsive_grid_for_each_tab(self):
+        css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
+        js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("grid-template-columns:repeat(3,minmax(0,1fr))", css)
+        self.assertIn(".filters-grid.is-extravio{grid-template-columns:repeat(4,minmax(0,1fr))}", css)
+        self.assertIn(".filters-grid.is-extravio .filter-card:last-child{grid-column:span 2}", css)
+        self.assertIn("max-width:700px", css)
+        self.assertIn("classList.toggle('is-extravio',active==='Extravio')", js)
+
     def test_regional_is_fixed_on_server(self):
         backend = (ROOT / "app.py").read_text(encoding="utf-8")
         self.assertIn("POSITION('ORLEAN' IN UPPER(COALESCE(rm, '')))", backend)
