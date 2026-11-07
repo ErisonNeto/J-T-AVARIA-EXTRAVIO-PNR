@@ -1,36 +1,32 @@
-"""Seguranca: nenhuma rota sensivel pode ficar aberta sem autenticacao."""
-import os
+"""Valida acesso direto sem DASH_USER/DASH_PASSWORD e mantém JT_API_KEY no servidor."""
 import unittest
 from unittest.mock import patch
-
-from fastapi import HTTPException
-from fastapi.security import HTTPBasicCredentials
-
-from app import authorize
+from fastapi.testclient import TestClient
+import app
 
 
-class SecurityTests(unittest.TestCase):
-    def test_producao_sem_senha_rejeita_acesso(self):
-        with patch.dict(os.environ, {'APP_ENV': 'production', 'DASH_USER': '', 'DASH_PASSWORD': ''}):
-            with self.assertRaises(HTTPException) as error:
-                authorize(None)
-            self.assertEqual(error.exception.status_code, 503)
+class PublicDashboardTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app.app)
 
-    def test_credenciais_incorretas_rejeitadas(self):
-        with patch.dict(os.environ, {'APP_ENV': 'production', 'DASH_USER': 'interno', 'DASH_PASSWORD': 'senha-teste'}):
-            with self.assertRaises(HTTPException) as error:
-                authorize(HTTPBasicCredentials(username='interno', password='errada'))
-            self.assertEqual(error.exception.status_code, 401)
-            self.assertIn('WWW-Authenticate', error.exception.headers)
+    def test_html_nao_exige_autenticacao(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("WWW-Authenticate", response.headers)
 
-    def test_credenciais_corretas_aceitas(self):
-        with patch.dict(os.environ, {'APP_ENV': 'production', 'DASH_USER': 'interno', 'DASH_PASSWORD': 'senha-teste'}):
-            self.assertTrue(authorize(HTTPBasicCredentials(username='interno', password='senha-teste')))
+    def test_consulta_nao_exige_usuario_ou_senha(self):
+        with patch.object(app, "cached_data", return_value=app.bundle([])):
+            result = self.client.get("/api/dados")
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()["rows"], [])
 
-    def test_modo_local_sem_senha_apenas_explicitamente(self):
-        with patch.dict(os.environ, {'APP_ENV': 'local', 'DASH_USER': '', 'DASH_PASSWORD': ''}):
-            self.assertTrue(authorize(None))
+    def test_api_exige_chave_apenas_para_falar_com_vm(self):
+        with patch.dict("os.environ", {"JT_API_KEY": ""}):
+            with self.assertRaises(app.HTTPException) as context:
+                app.query_api("SELECT 1", [])
+            self.assertEqual(context.exception.status_code, 503)
+            self.assertIn("JT_API_KEY", context.exception.detail)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
