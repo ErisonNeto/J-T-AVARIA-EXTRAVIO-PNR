@@ -96,7 +96,7 @@ def main():
                         help="autoriza o envio de UPSERT para a JT API")
     parser.add_argument("--lote", type=int, default=300)
     parser.add_argument("--permitir-status-nao-final", action="store_true",
-                        help="autoriza incluir Revogado/Apelação no valor consolidado após conferência")
+                        help="autoriza gravar também Revogado/Apelação para auditoria; KPIs continuam apenas com finalizados")
     args = parser.parse_args()
     if not 20 <= args.lote <= 1000:
         parser.error("--lote precisa estar entre 20 e 1000")
@@ -123,10 +123,10 @@ def main():
         print(f"  {len(nao_finais):,} ocorrências somam R$ {amount / 100:,.2f} no consolidado bruto.")
         if args.aplicar and not args.permitir_status_nao_final:
             raise RuntimeError(
-                "Carga bloqueada antes de escrever no banco: Revogado/Apelação "
-                "entram no total bruto. Defina a regra de negócio antes de publicar. "
-                "Se a inclusão for intencional, utilize --permitir-status-nao-final "
-                "junto com --aplicar."
+                "Carga pausada antes de gravar: existem tickets Revogado/Apelação. "
+                "Para preservá-los exclusivamente na auditoria do dashboard, "
+                "atualize app.py e static/app.js e execute --aplicar "
+                "--permitir-status-nao-final. Os KPIs somente somam estados finalizados."
             )
 
     with httpx.Client() as sess:
