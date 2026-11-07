@@ -60,7 +60,7 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(result['qtd_por_tipo'],{'PNR':1})
                 self.assertEqual(result['valor_total_centavos'],1250)
 
-    def test_declaration_date_not_closure_date_for_report_window(self):
+    def test_closure_date_controls_report_window(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             inputs = root / 'entradas'
@@ -87,11 +87,11 @@ class PipelineTests(unittest.TestCase):
             with patch.object(pipeline,'ROOT',root),patch.object(pipeline,'DATA',root/'dados'),patch.object(pipeline,'ENTRADAS',inputs):
                 summary=pipeline.run_import()
                 by_id={r['declaracao']:r for r in json.loads((root/'dados/painel.json').read_text('utf-8'))['rows']}
-                self.assertEqual(by_id['OUT-01']['data'],'2026-10-31')
+                self.assertEqual(by_id['OUT-01']['data'],'2026-11-06')
                 self.assertEqual(by_id['OUT-01']['fechada_em'],'2026-11-06')
                 self.assertEqual(by_id['NOV-01']['data'],'2026-11-07')
-                self.assertEqual(summary['datas'], {'min':'2026-10-31','max':'2026-11-07'})
-                self.assertIn('L - Data de declaração', summary['coluna_data'])
+                self.assertEqual(summary['datas'], {'min':'2026-11-06','max':'2026-11-07'})
+                self.assertIn('AC - Data de fechamento', summary['coluna_data'])
 
     def test_historical_import_and_management(self):
         with tempfile.TemporaryDirectory() as tmp:
