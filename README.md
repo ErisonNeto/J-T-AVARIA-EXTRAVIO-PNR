@@ -16,7 +16,17 @@ O dashboard **não recebe planilhas e não possui botão de importação**. No R
 
 Cada aba tem KPIs de custo, quantidade, bases e S/C envolvidos; evoluções diária/semanal (semana de segunda a domingo e comparações semanais), rankings de bases, coordenadores e supervisores, tabela de anomalias secundárias para auditoria, detalhamento e downloads em CSV.
 
-O filtro R/M permanece Orlean, e os demais filtros são data, UF, base, coordenador, supervisor, S/C, anomalia secundária e busca por remessa/declaração. Os valores da coluna AG já estão em **reais (BRL)** e não recebem conversão cambial.
+O R/M permanece fixo em Orlean (sem filtro exibido). Os filtros são data inicial/final, S/C unificado, base responsável, anomalia secundária e busca por remessa/declaração; a aba Extravio também oferece modalidade. Os valores da coluna AG já estão em **reais (BRL)** e não recebem conversão cambial.
+
+## Qual data o dashboard usa?
+
+- **Data da declaração (coluna L):** é a data do indicador, dos filtros, do evolutivo diário/semanal e das comparações.
+- **Data de fechamento (coluna AC):** preservada na tabela e no CSV detalhado para auditoria; não transfere uma ocorrência de outubro para novembro.
+- **Exemplo conferido:** no relatório exportado em 07/11 há 21.233 declarações datadas de **19/10 a 31/10** (coluna L), embora alguns fechamentos ocorram em novembro. Em **Minha responsabilidade.xls** há 344 declarações de **07/11**. Esses totais são gerais, antes de filtrar pelas bases do Orlean e pelo tipo.
+- Ambos os arquivos podem ser colocados no diretório `entradas/` e serão consolidados por declaração, remessa e base, sem inventar registros em dias intermediários.
+- O backend também corrige a data exibida de registros PostgreSQL gravados antes dessa mudança, priorizando `declarada_em` sobre o antigo campo `data` que podia representar fechamento.
+
+**Atenção:** a atualização no GitHub não faz UPSERT automático dos novos arquivos. A carga na JT API permanece separada, com pré-validação e exigência de confirmação explícita para registros revogados/em apelação.
 
 ## Arquitetura real do projeto
 
