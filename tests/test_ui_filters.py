@@ -34,6 +34,20 @@ class FilterLayoutTests(unittest.TestCase):
         self.assertIn("max-width:700px", css)
         self.assertIn("classList.toggle('is-extravio',active==='Extravio')", js)
 
+    def test_finalized_kpis_and_separate_audit(self):
+        html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('id="emConferencia"', html)
+        self.assertIn('id="reviewCount"', html)
+        self.assertIn('id="reviewValue"', html)
+        self.assertIn('id="downloadReview"', html)
+        self.assertIn("filtered=scope.filter(isFinal)", js)
+        self.assertIn("underReview=scope.filter(r=>!isFinal(r))", js)
+        self.assertIn("function currentContextRows(){return filtersWithoutDate(allForTab).filter(isFinal)}", js)
+        self.assertIn("renderReview();renderDetails()", js)
+        self.assertIn("function exportReview()", js)
+        self.assertIn("Data fechamento (AC)", js)
+
     def test_regional_is_fixed_on_server(self):
         backend = (ROOT / "app.py").read_text(encoding="utf-8")
         self.assertIn("POSITION('ORLEAN' IN UPPER(COALESCE(rm, '')))", backend)
