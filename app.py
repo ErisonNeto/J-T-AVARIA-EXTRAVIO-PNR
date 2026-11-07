@@ -8,6 +8,7 @@ from __future__ import annotations
 import hmac
 import os
 import time
+import unicodedata
 from collections import Counter
 from functools import lru_cache
 from pathlib import Path
@@ -44,6 +45,21 @@ QUERY = (
 )
 PAGE_SIZE = 500
 MAX_ROWS = 100000
+
+FINAL_STATUSES = {"PROCESSO ENCERRADO", "ARBITRAGEM FINALIZADA"}
+
+
+def financial_status(status: str) -> str:
+    """Somente dois estados explícitos entram nos KPIs financeiros.
+
+    Revogados, recursos, vazios e estados ainda não catalogados são preservados
+    no histórico, mas enviados à seção de conferência (nunca tratados como pagos).
+    """
+    plain = unicodedata.normalize("NFKD", str(status or ""))
+    plain = "".join(ch for ch in plain if not unicodedata.combining(ch))
+    normalized = " ".join(plain.upper().split())
+    return "finalizado" if normalized in FINAL_STATUSES else "conferencia"
+
 
 
 def authorize(credentials: HTTPBasicCredentials | None = Depends(security)):
@@ -148,6 +164,7 @@ def normalize_rows(records):
             item["valor_centavos"] = int(item.get("valor_centavos") or 0)
         except (TypeError, ValueError):
             raise HTTPException(503, "Valor financeiro inválido no banco; revise valor_centavos.") from None
+        item["situacao_financeira"] = financial_status(item["status"])
         if item["tipo"] not in {"Avaria", "Extravio", "PNR"}:
             raise HTTPException(503, "Indicador inválido cadastrado na arbitragem: revise a origem dos dados.")
         out.append(item)
