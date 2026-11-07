@@ -93,7 +93,7 @@ Inicie:
 .\.venv\Scripts\python.exe app.py
 ```
 
-Abra http://127.0.0.1:8000. Mesmo no modo local, **é obrigatório configurar JT_API_KEY** para o backend consultar a API. Somente o login do próprio dashboard é dispensado em desenvolvimento local.
+Abra http://127.0.0.1:8000. Mesmo no modo local, **é obrigatório configurar JT_API_KEY** para o backend consultar a API. O painel não exige login tanto localmente quanto no Render; o endereço público permite acesso a todos os registros exibidos e às exportações CSV.
 
 ## Como alimentar o banco (sem upload no dashboard)
 
@@ -136,6 +136,10 @@ O comando é **somente leitura**: testa `SELECT 1`, existência da tabela `publi
 
 `/api/health` indica apenas que o serviço web está ativo, **não valida a consulta ao banco**.
 
+## Segurança de acesso
+
+Este painel **não solicita login**: qualquer pessoa com o link Render pode visualizar e baixar informações de remessas, valores e responsáveis. A `JT_API_KEY` continua exclusivamente no backend e **não é exposta no navegador**. Se o dashboard não deve ser público, configure uma proteção externa de acesso (como um gateway corporativo) antes de divulgar o endereço.
+
 ## Deploy Render
 
 Conecte o repositório em **New → Blueprint** ou configure:
@@ -143,7 +147,7 @@ Conecte o repositório em **New → Blueprint** ou configure:
 - **Build command:** `pip install -r requirements.txt`
 - **Start command:** `uvicorn app:app --host 0.0.0.0 --port $PORT`
 - **Health check:** `/api/health`
-- **Environment:** `APP_ENV=production`, `JT_API_URL=https://jt-api.rockettechbr.com.br`, `JT_API_KEY` (secreta), `DASH_USER` e `DASH_PASSWORD` (secretos).
+- **Environment:** `APP_ENV=production`, `JT_API_URL=https://jt-api.rockettechbr.com.br`, `JT_API_KEY` (secreta). Não são usadas as variáveis `DASH_USER` e `DASH_PASSWORD`.
 
 Não é necessário configurar disco persistente no Render. A tabela fica na VM e existe cache de até 60 segundos por instância para a consulta do dashboard. Se a VM ou o Cloudflare Tunnel estiverem offline, o dashboard informará indisponibilidade em vez de mostrar números inventados.
 
