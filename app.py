@@ -5,7 +5,6 @@ Os dados ficam no PostgreSQL da VM e chegam pela JT API /query.
 """
 from __future__ import annotations
 
-import hmac
 import os
 import time
 import unicodedata
@@ -15,15 +14,13 @@ from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env", override=False)
 app = FastAPI(title="J&T | Avaria • Extravio • PNR", docs_url=None, redoc_url=None)
-security = HTTPBasic(auto_error=False)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 API_URL = os.getenv("JT_API_URL", "https://jt-api.rockettechbr.com.br").strip().rstrip("/")
@@ -60,25 +57,6 @@ def financial_status(status: str) -> str:
     normalized = " ".join(plain.upper().split())
     return "finalizado" if normalized in FINAL_STATUSES else "conferencia"
 
-
-
-def authorize(credentials: HTTPBasicCredentials | None = Depends(security)):
-    user = os.getenv("DASH_USER", "")
-    password = os.getenv("DASH_PASSWORD", "")
-    local = os.getenv("APP_ENV", "production").lower() == "local"
-    if local and not user and not password:
-        return True
-    if not user or not password:
-        raise HTTPException(503, "Defina DASH_USER e DASH_PASSWORD no Render.")
-    if credentials is None or not (
-        hmac.compare_digest(credentials.username, user)
-        and hmac.compare_digest(credentials.password, password)
-    ):
-        raise HTTPException(
-            401, "Usuário ou senha inválidos.",
-            headers={"WWW-Authenticate": 'Basic realm="J&T Indicadores"'},
-        )
-    return True
 
 
 def rows_of(result, columns=COLS):
@@ -221,7 +199,7 @@ def cached_data(bucket: int):
 
 
 @app.get("/")
-def home(_=Depends(authorize)):
+def home():
     return FileResponse(ROOT / "static" / "index.html",
                         headers={"Cache-Control": "no-store"})
 
@@ -236,7 +214,7 @@ def health():
 
 
 @app.get("/api/dados")
-def data(_=Depends(authorize)):
+def data():
     ttl = max(5, int(os.getenv("JT_API_CACHE_SECONDS", "60")))
     result = cached_data(int(time.time() // ttl))
     return result
@@ -244,6 +222,4 @@ def data(_=Depends(authorize)):
 
 if __name__ == "__main__":
     import uvicorn
-    os.environ.setdefault("APP_ENV", "local")
-    host = "127.0.0.1" if not os.getenv("DASH_PASSWORD") else "0.0.0.0"
-    uvicorn.run(app, host=host, port=int(os.getenv("PORT", "8000")))
+    uvicorn.run(app, host="127.0.0.1", port=int(os.getenv("PORT", "8000")))
