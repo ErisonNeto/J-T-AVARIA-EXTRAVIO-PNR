@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#d71920" />
   <meta name="description" content="Indicadores internos de qualidade J&T: Avaria, Extravio e PNR." />
   <title>J&T Express | Avaria · Extravio · PNR</title>
-  <link rel="stylesheet" href="/static/style.css?v=3abas-datadeclaracao-6" />
-  <script defer src="/static/app.js?v=3abas-datadeclaracao-6"></script>
+  <link rel="stylesheet" href="/static/style.css?v=3abas-status-fechamento-7" />
+  <script defer src="/static/app.js?v=3abas-status-fechamento-7"></script>
 </head>
 <body>
   <header class="topbar">
@@ -64,7 +64,7 @@
 
     <section class="panel evolution-panel" id="evolucao">
       <div class="section-head panel-head">
-        <div><span class="eyebrow">EVOLUÇÃO OPERACIONAL</span><h2 id="chartTitle">Evolução diária — Avaria</h2><p>Evolução por data da declaração (coluna L). Passe o mouse ou toque para consultar quantidade e valor em R$.</p></div>
+        <div><span class="eyebrow">EVOLUÇÃO OPERACIONAL</span><h2 id="chartTitle">Evolução diária — Avaria</h2><p>Evolução por data de fechamento do ticket (coluna AC). Passe o mouse ou toque para consultar quantidade e valor em R$.</p></div>
         <div class="switch-wrap"><div class="switch" role="group" aria-label="Métrica do gráfico"><button class="on" data-chartmetric="count" type="button">Quantidade</button><button data-chartmetric="value" type="button">Valor (R$)</button></div><div class="switch" role="group" aria-label="Agrupamento do gráfico"><button class="on" data-chartperiod="day" type="button">Diário</button><button data-chartperiod="week" type="button">Semanal</button></div></div>
       </div>
       <div id="chart" class="chart-area" aria-live="polite"></div>
@@ -89,9 +89,9 @@
     </section>
 
     <section class="panel detail-panel" id="detalhamento">
-      <div class="section-head panel-head"><div><span class="eyebrow">AUDITORIA E EXPORTAÇÃO</span><h2>Detalhamento das remessas</h2><p>Dados por data da declaração; o fechamento continua disponível no detalhamento. Uma linha por responsabilização.</p></div><div class="head-actions"><button class="btn btn-outline" id="downloadBases2" type="button">Ranking de bases</button><button class="btn btn-primary" id="downloadDetails" type="button">Baixar base filtrada (CSV)</button></div></div>
+      <div class="section-head panel-head"><div><span class="eyebrow">AUDITORIA E EXPORTAÇÃO</span><h2>Detalhamento das remessas</h2><p>Dados por data de fechamento; data da declaração disponível no detalhamento e no CSV. Uma linha por responsabilização.</p></div><div class="head-actions"><button class="btn btn-outline" id="downloadBases2" type="button">Ranking de bases</button><button class="btn btn-primary" id="downloadDetails" type="button">Baixar base filtrada (CSV)</button></div></div>
       <div class="detail-info" id="detailCount">—</div>
-      <div class="table-wrap detail-wrap"><table><thead><tr><th>Declaração</th><th>Nº remessa</th><th>Tipo secundário</th><th>Base</th><th>Coordenador</th><th>Supervisor</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="detailRows"></tbody></table></div>
+      <div class="table-wrap detail-wrap"><table><thead><tr><th>Fechamento</th><th>Nº remessa</th><th>Tipo secundário</th><th>Base</th><th>Coordenador</th><th>Supervisor</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="detailRows"></tbody></table></div>
       <div class="pager"><span id="pageStatus">—</span><div><button id="pagePrev" type="button" aria-label="Página anterior">Anterior</button><button id="pageNext" type="button" aria-label="Página seguinte">Próxima</button></div></div>
     </section>
 
