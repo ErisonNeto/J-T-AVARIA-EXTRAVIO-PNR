@@ -17,7 +17,7 @@ const sum = (rows) => rows.reduce((a,r)=>a+Number(r.valor_centavos||0),0);
 const filterIds = ['sc','base','secundaria','modalidade'];
 let data = {meta:{datas:{}},rows:[]};
 let active = 'Avaria';
-let allForTab = [], filtered = [];
+let allForTab = [], filtered = [], underReview = [];
 let page = 1;
 let showAllBases=false,showAllManagers=false;
 let chartMetric='count',chartPeriod='day',rankMetric='value';
@@ -28,6 +28,7 @@ function unique(values){return [...new Set(values.filter(v=>v!==null&&v!==undefi
 function fillSelect(id, values, fallback){const el=$(id),prev=el.value;el.innerHTML='<option value="">'+esc(fallback)+'</option>'+unique(values).map(v=>`<option value="${esc(v)}">${esc(short(v,50))}</option>`).join('');if(prev&&!Array.from(el.options).some(x=>x.value===prev)){el.insertAdjacentHTML('beforeend',`<option value="${esc(prev)}">${esc(prev)} (fora da aba)</option>`)}el.value=prev;}
 function managers(row){return unique([row.coordenador,row.supervisor]);}
 function categoryRows(){return data.rows.filter(r=>r.tipo===active);}
+function isFinal(r){return r.situacao_financeira==='finalizado';}
 function filtersWithoutDate(rows){const q=$('search').value.trim().toLowerCase();return rows.filter(r=>{
   if($('base').value && r.base!==$('base').value)return false;
   if($('sc').value && !managers(r).includes($('sc').value))return false;
@@ -44,7 +45,7 @@ function refreshFilters(){
   fillSelect('modalidade',allForTab.map(r=>r.modalidade),'Todas');
   $('originField').classList.toggle('hidden',active!=='Extravio');
   document.querySelector('.filters-grid').classList.toggle('is-extravio',active==='Extravio');
-  for(const type of ['Avaria','Extravio','PNR'])$('tab'+type).textContent=n(data.rows.filter(r=>r.tipo===type).length);
+  for(const type of ['Avaria','Extravio','PNR'])$('tab'+type).textContent=n(data.rows.filter(r=>r.tipo===type && isFinal(r)).length);
   document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('is-active',b.dataset.tab===active); b.setAttribute('aria-selected',b.dataset.tab===active?'true':'false')});
 }
 function setup(){
@@ -70,6 +71,7 @@ function setup(){
   $('downloadBases2').addEventListener('click',exportBases);
   $('downloadManagers').addEventListener('click',exportManagers);
   $('downloadSecondary').addEventListener('click',exportSecondary);
+  $('downloadReview').addEventListener('click',exportReview);
   document.addEventListener('click',handleActions);
   renderQuality();render();
 }
@@ -81,12 +83,14 @@ function period(mode){const {min,max}=data.meta.datas||{};if(!max){notify('Sem h
 }
 function render(){
   const start=$('dateStart').value,end=$('dateEnd').value;
-  if(start&&end&&start>end){notify('Data inicial posterior à data final.');filtered=[]}else filtered=inPeriod(filtersWithoutDate(allForTab),start,end);
-  $('filterResult').innerHTML=`<b>${n(filtered.length)}</b> ocorrências de ${esc(active)} · <b>${money(sum(filtered))}</b>`;
+  const scope=start&&end&&start>end?(notify('Data inicial posterior à data final.'),[]):inPeriod(filtersWithoutDate(allForTab),start,end);
+  filtered=scope.filter(isFinal);
+  underReview=scope.filter(r=>!isFinal(r));
+  $('filterResult').innerHTML=`<b>${n(filtered.length)}</b> finalizadas de ${esc(active)} · <b>${money(sum(filtered))}</b>`;
   document.querySelectorAll('[data-period]').forEach(b=>b.classList.remove('active'));
-  renderKpis();renderChart();renderRanks();renderSecondary();renderDetails();
+  renderKpis();renderChart();renderRanks();renderSecondary();renderReview();renderDetails();
 }
-function currentContextRows(){return filtersWithoutDate(allForTab)}
+function currentContextRows(){return filtersWithoutDate(allForTab).filter(isFinal)}
 function renderKpis(){
   const amount=sum(filtered), cnt=filtered.length;
   $('kValue').textContent=money(amount);$('kCount').textContent=n(cnt);
@@ -193,6 +197,17 @@ function renderRanks(){const bases=baseGroups(),managersList=managerGroups();con
 }
 function secondaryGroups(){return grouping(filtered,r=>JSON.stringify([r.primaria||'',r.secundaria||''])).map(x=>({...x,primaria:x.items[0].primaria,secundaria:x.items[0].secundaria})).sort((a,b)=>b.value-a.value||b.count-a.count)}
 function renderSecondary(){$('secondaryRows').innerHTML=secondaryGroups().map(g=>`<tr><td>${esc(g.primaria)}</td><td><span class="main-name">${esc(g.secundaria||'Sem detalhamento')}</span></td><td class="num">${n(g.count)}</td><td class="num"><b>${money(g.value)}</b></td><td><button class="tiny-link" data-secondary="${esc(g.secundaria)}" type="button">Filtrar</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhuma anomalia secundária no período.</td></tr>'}
+function reviewGroups(){
+  return grouping(underReview,r=>r.status||'Status não informado')
+    .sort((a,b)=>b.count-a.count||b.value-a.value);
+}
+function renderReview(){
+  $('reviewCount').textContent=n(underReview.length);
+  $('reviewValue').textContent=money(sum(underReview));
+  $('reviewRows').innerHTML=reviewGroups().map(g=>
+    `<tr><td>${esc(g.key)}</td><td class="num">${n(g.count)}</td><td class="num">${money(g.value)}</td></tr>`
+  ).join('')||'<tr><td colspan="3" class="empty">Nenhuma ocorrência revogada ou em apelação neste recorte.</td></tr>';
+}
 function renderDetails(){const max=Math.max(1,Math.ceil(filtered.length/25));page=Math.min(Math.max(1,page),max);const list=filtered.slice((page-1)*25,page*25);
   $('detailRows').innerHTML=list.map((r,i)=>`<tr><td>${esc(isoBR(r.data))}</td><td><b>${esc(r.remessa)}</b><span class="minor">${esc(r.declaracao)}</span></td><td title="${esc(r.secundaria)}">${esc(short(r.secundaria,48))}</td><td>${esc(r.base||'—')}</td><td>${esc(short(r.coordenador||'Não informado',26))}</td><td>${esc(short(r.supervisor||'Não informado',26))}</td><td class="num"><b>${money(r.valor_centavos)}</b></td><td><button class="row-more" data-detail="${(page-1)*25+i}" type="button">Ver</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">Nenhuma remessa para os filtros aplicados.</td></tr>';
   const a=list.length?(page-1)*25+1:0,b=list.length?(page-1)*25+list.length:0;
@@ -217,6 +232,41 @@ function stamp(){return ($('dateStart').value||'inicio').replace(/-/g,'')+'_'+($
 function exportDetails(){const headers=['Nº declaração','Nº remessa','Data do indicador (fechamento)','Data fechamento','Data declaração','Indicador','Origem / modalidade','Anomalia primária (D)','Anomalia secundária (E)','Base responsável original (AE)','Base vinculada Gestão','Código base','UF','R/M','Coordenador','Supervisor','Status da arbitragem','Valor a pagar R$ (AG)','Descrição (AB)','Decisão (AK)','Contestação (AL)','Coerente? (Sim/Não)','Observação do S/C'];
   const rows=filtered.map(r=>[r.declaracao,r.remessa,isoBR(r.data),isoBR(r.fechada_em),isoBR(r.declarada_em),r.tipo,r.modalidade,r.primaria,r.secundaria,r.base_responsavel,r.base,r.codigo_base,r.uf,r.rm,r.coordenador,r.supervisor,r.status,(r.valor_centavos/100).toFixed(2).replace('.',','),r.descricao,r.comentario_decisao,r.comentario_contestacao,'','']);
   downloadCSV('JT_'+active.toUpperCase()+'_remessas_'+stamp()+'.csv',headers,rows,[1,11]);}
+function exportReview(){
+  const headers=['Número declaração','Número da remessa','Data fechamento (AC)','Data declaração (L)','Status','Indicador','Anomalia primária','Anomalia secundária','Base responsável original','Base Gestão','Código base','Coordenador','Supervisor','Valor sob análise Rconst rows=baseGroups().map(g=>{const r=g.items[0];return[r.base,r.codigo_base,r.uf,r.rm,r.coordenador,r.supervisor,g.count,(g.value/100).toFixed(2).replace('.',',')]});downloadCSV('JT_'+active.toUpperCase()+'_bases_'+stamp()+'.csv',['Base','Código','UF','R/M','Coordenador','Supervisor','Ocorrências','Valor R$'],rows,[1]);}
+function exportManagers(){const rows=managerGroups().map(g=>[g.name,g.role,g.count,(g.value/100).toFixed(2).replace('.',',')]);downloadCSV('JT_'+active.toUpperCase()+'_responsaveis_'+stamp()+'.csv',['Responsável','Função','Ocorrências','Valor R$'],rows);}
+function exportSecondary(){const rows=secondaryGroups().map(g=>[active,g.primaria,g.secundaria,g.count,(g.value/100).toFixed(2).replace('.',',')]);downloadCSV('JT_'+active.toUpperCase()+'_secundarias_'+stamp()+'.csv',['Indicador','Primária (D)','Secundária (E)','Ocorrências','Valor R$'],rows);}
+async function load(){
+  try {
+    const response=await fetch('/api/dados',{cache:'no-store'});
+    if(!response.ok){
+      let body={};
+      try{body=await response.json()}catch{}
+      throw new Error(body.detail||('JT API retornou HTTP '+response.status));
+    }
+    data=await response.json();
+    if(!Array.isArray(data.rows))throw new Error('Formato inesperado da API de dados.');
+    setup();
+    if(!data.rows.length)notify('Não há ocorrências no banco para o R/M Orlean. Verifique a carga na JT API.');
+  }catch(error){
+    console.error('JT API indisponível:',error);
+    document.querySelector('.container').innerHTML=
+      '<section class="panel error-banner"><h2>Dados indisponíveis na JT API</h2>'+
+      '<p>'+esc(error.message)+'</p>'+
+      '<p>O painel lê exclusivamente o PostgreSQL da VM pela JT API. Não existe importação de XLSX pela interface. Confirme a tabela jt_arbitragem_ocorrencias e as variáveis JT_API_URL / JT_API_KEY do serviço.</p>'+
+      '<button class="btn btn-primary" type="button" onclick="location.reload()">Tentar novamente</button></section>';
+  }
+}
+load();,'Descrição','Decisão da arbitragem','Contestação'];
+  const rows=underReview.map(r=>[
+    r.declaracao,r.remessa,isoBR(r.fechada_em),isoBR(r.declarada_em),
+    r.status,r.tipo,r.primaria,r.secundaria,r.base_responsavel,
+    r.base,r.codigo_base,r.coordenador,r.supervisor,
+    (r.valor_centavos/100).toFixed(2).replace('.',','),
+    r.descricao,r.comentario_decisao,r.comentario_contestacao
+  ]);
+  downloadCSV('JT_'+active.toUpperCase()+'_conferencia_'+stamp()+'.csv',headers,rows,[1,10]);
+}
 function exportBases(){const rows=baseGroups().map(g=>{const r=g.items[0];return[r.base,r.codigo_base,r.uf,r.rm,r.coordenador,r.supervisor,g.count,(g.value/100).toFixed(2).replace('.',',')]});downloadCSV('JT_'+active.toUpperCase()+'_bases_'+stamp()+'.csv',['Base','Código','UF','R/M','Coordenador','Supervisor','Ocorrências','Valor R$'],rows,[1]);}
 function exportManagers(){const rows=managerGroups().map(g=>[g.name,g.role,g.count,(g.value/100).toFixed(2).replace('.',',')]);downloadCSV('JT_'+active.toUpperCase()+'_responsaveis_'+stamp()+'.csv',['Responsável','Função','Ocorrências','Valor R$'],rows);}
 function exportSecondary(){const rows=secondaryGroups().map(g=>[active,g.primaria,g.secundaria,g.count,(g.value/100).toFixed(2).replace('.',',')]);downloadCSV('JT_'+active.toUpperCase()+'_secundarias_'+stamp()+'.csv',['Indicador','Primária (D)','Secundária (E)','Ocorrências','Valor R$'],rows);}
