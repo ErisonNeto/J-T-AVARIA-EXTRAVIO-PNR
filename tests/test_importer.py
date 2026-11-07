@@ -60,6 +60,39 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(result['qtd_por_tipo'],{'PNR':1})
                 self.assertEqual(result['valor_total_centavos'],1250)
 
+    def test_declaration_date_not_closure_date_for_report_window(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inputs = root / 'entradas'
+            inputs.mkdir()
+            (root / 'dados').mkdir()
+            fake_xlsx(inputs / 'Gestão de colaboradores.xlsx', [
+                {'A':'Nome da Base','G':'Responsável da Região'},
+                {'A':'F BASE-PA','B':'123','G':'ORLEAN DA SILVA','H':'Coordenador'},
+            ])
+            header = {'A':'Número de declaração','B':'Número da Remessa',
+                      'D':'Tipo de anomalia primária','AG':'Valor a pagar (yuan)'}
+            fake_xlsx(inputs / 'arbitragem_19_a_31.xlsx', [
+                header,
+                {'A':'OUT-01','B':'BR100','D':'AVARIA 破损','G':'Processo encerrado',
+                 'L':'2026-10-31 15:40:00','AC':'2026-11-06 08:00:00',
+                 'AE':'F BASE-PA','AG':'12.35'},
+            ])
+            fake_xlsx(inputs / 'Minha responsabilidade.xls', [
+                header,
+                {'A':'NOV-01','B':'BR101','D':'Reivindicações rápidas/投诉理赔',
+                 'G':'Arbitragem finalizada','L':'2026-11-07 10:00:00',
+                 'AC':'2026-11-07 12:00:00','AE':'F BASE-PA','AG':'5.00'},
+            ])
+            with patch.object(pipeline,'ROOT',root),patch.object(pipeline,'DATA',root/'dados'),patch.object(pipeline,'ENTRADAS',inputs):
+                summary=pipeline.run_import()
+                by_id={r['declaracao']:r for r in json.loads((root/'dados/painel.json').read_text('utf-8'))['rows']}
+                self.assertEqual(by_id['OUT-01']['data'],'2026-10-31')
+                self.assertEqual(by_id['OUT-01']['fechada_em'],'2026-11-06')
+                self.assertEqual(by_id['NOV-01']['data'],'2026-11-07')
+                self.assertEqual(summary['datas'], {'min':'2026-10-31','max':'2026-11-07'})
+                self.assertIn('L - Data de declaração', summary['coluna_data'])
+
     def test_historical_import_and_management(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);inputs=root/'entradas';inputs.mkdir();(root/'dados').mkdir()
