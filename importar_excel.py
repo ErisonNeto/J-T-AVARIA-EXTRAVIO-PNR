@@ -237,8 +237,17 @@ def combine(gestao, raw, source, import_count, dup_count):
 
 def run_import(zerar_historico=False):
     DATA.mkdir(exist_ok=True)
-    files = sorted([*ROOT.glob('*.xlsx'), *ENTRADAS.glob('*.xlsx')],
-                   key=lambda p: (p.stat().st_mtime, p.name))
+    # Alguns relatórios são arquivos XLSX (ZIP/OOXML) com extensão .xls.
+    # Aceitamos esse formato sem renomear; .xls binário tradicional requer conversão.
+    candidates = [*ROOT.glob('*.xlsx'), *ENTRADAS.glob('*.xlsx'),
+                  *ROOT.glob('*.xls'), *ENTRADAS.glob('*.xls')]
+    files = []
+    for p in candidates:
+        if p.suffix.lower() == '.xls' and not zipfile.is_zipfile(p):
+            print(f'ATENÇÃO: {p.name}: XLS binário não suportado; salve como .xlsx antes da carga.')
+            continue
+        files.append(p)
+    files.sort(key=lambda p: (p.stat().st_mtime, p.name))
     sources = []
     mg_files = [p for p in files if 'gest' in norm(p.name).lower()]
     if mg_files:
@@ -294,6 +303,18 @@ def run_import(zerar_historico=False):
         print(f"{k:10} {m['qtd_por_tipo'].get(k,0):6,} | R$ {m['valor_por_tipo_centavos'][k]/100:,.2f}")
     print(f"TOTAL R$ {m['valor_total_centavos']/100:,.2f} | Bases: {m['bases_ofensoras']}")
     print(f"Sem correspondência com a Gestão (todos os R/M): {m['sem_correspondencia_global']:,}")
+    status_counts = Counter(r.get('status') or '(sem status)' for r in bundle['rows'])
+    final_statuses = {'Processo encerrado', 'Arbitragem finalizada'}
+    pending = {name: qtd for name, qtd in status_counts.items()
+               if name not in final_statuses}
+    if pending:
+        amount_pending = sum(r['valor_centavos'] for r in bundle['rows']
+                             if (r.get('status') or '(sem status)') not in final_statuses)
+        print(f'ATENÇÃO: {sum(pending.values()):,} ocorrências com status não finalizado/revogado '
+              f'(R$ {amount_pending / 100:,.2f}) estão incluídas nos totais deste relatório.')
+        print('Situações para conferência:', dict(pending))
+        print('Valide a regra de negócio antes de publicar valores como a pagar.')
+
     print('Arquivos gerados: dados/painel.json, dados/gestao.json, dados/historico.json.gz')
     print('Execute: python app.py')
     return m
