@@ -48,6 +48,17 @@ class FilterLayoutTests(unittest.TestCase):
         self.assertIn("function exportReview()", js)
         self.assertIn("Data fechamento (AC)", js)
 
+    def test_default_period_is_calendar_week_monday_sunday(self):
+        js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("const currentWeek = () => {const start=monday(localISO(new Date()));return {start,end:shiftDay(start,6)};};", js)
+        self.assertIn("renderQuality();period('week');", js)
+        self.assertIn("period('week');});", js)
+        self.assertIn("if(mode==='week')", js)
+        self.assertIn('data-period="week" type="button" class="active"', html)
+        self.assertIn("Esta semana (seg–dom)", html)
+        self.assertIn("Abertura padrão: semana atual, de segunda a domingo", html)
+
     def test_regional_is_fixed_on_server(self):
         backend = (ROOT / "app.py").read_text(encoding="utf-8")
         self.assertIn("POSITION('ORLEAN' IN UPPER(COALESCE(rm, '')))", backend)
