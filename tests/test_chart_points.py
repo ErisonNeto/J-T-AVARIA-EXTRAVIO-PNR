@@ -25,7 +25,7 @@ class ChartPointTests(unittest.TestCase):
         self.assertIn(".chart-tooltip[hidden]{display:none}", css)
         self.assertIn(".chart-hit-point{fill:transparent;pointer-events:all}", css)
         self.assertIn("Evolução por data de fechamento do ticket (coluna AC). Passe o mouse ou toque", html)
-        self.assertIn("v=3abas-status-auditoria-8", html)
+        self.assertIn("v=3abas-semana-atual-9", html)
 
 
 if __name__ == "__main__":
