@@ -17,7 +17,8 @@ const currentWeek = () => {const start=monday(localISO(new Date()));return {star
 const sum = (rows) => rows.reduce((a,r)=>a+Number(r.valor_centavos||0),0);
 const filterIds = ['sc','base','secundaria','modalidade'];
 let data = {meta:{datas:{}},rows:[]};
-let active = 'Avaria';
+const requestedTab = new URLSearchParams(location.search).get('indicador');
+let active = ['Avaria','Extravio','PNR'].includes(requestedTab) ? requestedTab : 'Avaria';
 let allForTab = [], filtered = [], underReview = [];
 let page = 1;
 let showAllBases=false,showAllManagers=false;
