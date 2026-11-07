@@ -135,7 +135,9 @@ def normalize_rows(records):
     out = []
     for row in records:
         item = {name: row.get(name) for name in COLS}
-        item["data"] = str(item.get("data") or "")[:10]
+        # Compatibilidade com históricos anteriores: a data operacional é L.
+        # Se o banco ainda guardar data=AC, preferir declarada_em para o gráfico.
+        item["data"] = str(item.get("declarada_em") or item.get("fechada_em") or item.get("data") or "")[:10]
         item["fechada_em"] = str(item.get("fechada_em") or "")[:10]
         item["declarada_em"] = str(item.get("declarada_em") or "")[:10]
         for field in ("chave", "declaracao", "remessa", "primaria", "secundaria",
@@ -150,6 +152,7 @@ def normalize_rows(records):
         if item["tipo"] not in {"Avaria", "Extravio", "PNR"}:
             raise HTTPException(503, "Indicador inválido cadastrado na arbitragem: revise a origem dos dados.")
         out.append(item)
+    out.sort(key=lambda row: (row['data'], row['chave']), reverse=True)
     return out
 
 
@@ -165,7 +168,7 @@ def bundle(records):
             "origem": ["PostgreSQL jt_indicadores / JT API /query"],
             "rm": "ORLEAN",
             "moeda": "BRL",
-            "coluna_data": "Data fechamento (AC); fallback data declaração (L)",
+            "coluna_data": "Data da declaração (L); fallback data fechamento (AC)",
             "total_na_exportacao": None,
             "total_ativos": len(rows),
             "qtd_por_tipo": {group: quantities[group] for group in types},
