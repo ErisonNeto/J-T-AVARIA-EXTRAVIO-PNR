@@ -175,8 +175,8 @@ function renderChart(){
     point.addEventListener('click',(event)=>{event.stopPropagation();if(pinned && Number(tip.dataset.index)===index){pinned=false;tip.hidden=true}else{pinned=true;tip.dataset.index=String(index);showPoint(index)}});
     point.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();point.dispatchEvent(new MouseEvent('click',{bubbles:true}))}else if(event.key==='Escape'){pinned=false;tip.hidden=true}});
   });
-  el.addEventListener('click',event=>{if(!event.target.closest('[data-chart-point]')){pinned=false;tip.hidden=true}});
-  el.addEventListener('pointerleave',()=>{if(!pinned)tip.hidden=true});
+  el.onclick=event=>{if(!event.target.closest('[data-chart-point]')){pinned=false;tip.hidden=true}};
+  el.onpointerleave=()=>{if(!pinned)tip.hidden=true};
   $('chartCoverage').textContent=n(dates.length)+(chartPeriod==='week'?' semanas (seg–dom)':' dias')+' · '+isoBR(start)+' a '+isoBR(end);
 }
 function compact(value){if(value>=1e6)return (value/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';if(value>=1e3)return (value/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil';return Number(value).toLocaleString('pt-BR',{maximumFractionDigits:1})}
