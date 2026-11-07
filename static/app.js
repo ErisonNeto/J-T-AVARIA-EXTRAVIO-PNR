@@ -13,6 +13,7 @@ const dateObj = (s) => new Date(s+'T12:00:00');
 const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const shiftDay = (s, delta) => {const d=dateObj(s);d.setDate(d.getDate()+delta);return localISO(d)};
 const monday = (s) => {const d=dateObj(s); d.setDate(d.getDate()-(d.getDay()+6)%7);return localISO(d)};
+const currentWeek = () => {const start=monday(localISO(new Date()));return {start,end:shiftDay(start,6)};};
 const sum = (rows) => rows.reduce((a,r)=>a+Number(r.valor_centavos||0),0);
 const filterIds = ['sc','base','secundaria','modalidade'];
 let data = {meta:{datas:{}},rows:[]};
@@ -49,14 +50,15 @@ function refreshFilters(){
   document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('is-active',b.dataset.tab===active); b.setAttribute('aria-selected',b.dataset.tab===active?'true':'false')});
 }
 function setup(){
-  const {min,max} = data.meta.datas || {};
-  $('dateEnd').value=max||'';
-  $('dateStart').value=max? (min && shiftDay(max,-6)<min?min:shiftDay(max,-6)) : '';
+  const {max} = data.meta.datas || {};
+  const {start,end}=currentWeek();
+  $('dateStart').value=start;
+  $('dateEnd').value=end;
   $('lastDate').textContent=isoBR(max);
   $('sourceInfo').textContent='Dados da JT API • PostgreSQL';
   refreshFilters();
   for(const id of [...filterIds,'dateStart','dateEnd','search'])$(id).addEventListener(id==='search'?'input':'change',()=>{page=1; render()});
-  $('resetFilters').addEventListener('click',()=>{for(const id of filterIds)$(id).value='';$('search').value='';period('7');});
+  $('resetFilters').addEventListener('click',()=>{for(const id of filterIds)$(id).value='';$('search').value='';period('week');});
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{if(active!==b.dataset.tab){active=b.dataset.tab;$('modalidade').value='';page=1;showAllBases=false;showAllManagers=false;refreshFilters();render()}}));
   document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>period(b.dataset.period)));
   document.querySelectorAll('[data-chartmetric]').forEach(b=>b.addEventListener('click',()=>{chartMetric=b.dataset.chartmetric;activeButton('[data-chartmetric]',b);renderChart()}));
@@ -73,12 +75,23 @@ function setup(){
   $('downloadSecondary').addEventListener('click',exportSecondary);
   $('downloadReview').addEventListener('click',exportReview);
   document.addEventListener('click',handleActions);
-  renderQuality();render();
+  renderQuality();period('week');
 }
 function activeButton(query,button){document.querySelectorAll(query).forEach(x=>x.classList.toggle('on',x===button));}
-function period(mode){const {min,max}=data.meta.datas||{};if(!max){notify('Sem histórico disponível na JT API para selecionar o período.');return;}
-  let start=min,end=max;if(mode==='last')start=max;else if(mode==='7')start=shiftDay(max,-6);else if(mode==='month')start=max.slice(0,7)+'-01';
-  if(min&&start<min)start=min;$('dateStart').value=start;$('dateEnd').value=end;page=1;render();
+function period(mode){
+  const {min,max}=data.meta.datas||{};
+  let start,end;
+  if(mode==='week'){
+    ({start,end}=currentWeek()); // Semana do calendário: seg a dom, mesmo sem registros no domingo.
+  }else{
+    if(!max){notify('Sem histórico disponível na JT API para selecionar o período.');return;}
+    start=min||max;end=max;
+    if(mode==='last')start=max;
+    else if(mode==='7')start=shiftDay(max,-6);
+    else if(mode==='month')start=max.slice(0,7)+'-01';
+    if(min&&start<min)start=min;
+  }
+  $('dateStart').value=start;$('dateEnd').value=end;page=1;render();
   document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period===mode));
 }
 function render(){
