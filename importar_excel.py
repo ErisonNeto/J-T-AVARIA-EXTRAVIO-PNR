@@ -207,9 +207,9 @@ def combine(gestao, raw, source, import_count, dup_count):
                   'codigo_base': matched['codigo'], 'uf': matched['uf'], 'rm': matched['rm'],
                   'coordenador': matched['coordenador'], 'supervisor': matched['supervisor'],
                   'sc': matched['coordenador'] or matched['supervisor'] or 'Sem S/C cadastrado'})
-        # Indicador por data de declaração (L), não por data de fechamento (AC).
-        # O fechamento pode ocorrer dias depois e permanece em fechada_em.
-        r['data'] = item['declarada_em'] or item['fechada_em']
+        # Indicador de tickets finalizados: agrupar pelo fechamento (AC).
+        # Declaração (L) fica disponível para a auditoria.
+        r['data'] = item['fechada_em'] or item['declarada_em']
         mapped.append(r)
     mapped.sort(key=lambda r: (r['data'], r['declaracao']), reverse=True)
     all_dates = [r['data'] for r in mapped if r['data']]
@@ -219,7 +219,7 @@ def combine(gestao, raw, source, import_count, dup_count):
     summary = {
         'origem': source, 'gerado_em': dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).isoformat(timespec='seconds'),
         'rm': 'ORLEAN DA SILVA DO NASCIMENTO', 'moeda': 'BRL',
-        'coluna_data': 'L - Data de declaração; fallback AC - Data de fechamento',
+        'coluna_data': 'AC - Data de fechamento; fallback L - Data de declaração',
         'total_na_exportacao': len(raw), 'total_ativos': len(mapped),
         'qtd_por_tipo': dict(stats), 'valor_por_tipo_centavos': totals,
         'valor_total_centavos': sum(r['valor_centavos'] for r in mapped),
