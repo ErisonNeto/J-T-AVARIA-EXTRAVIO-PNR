@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#d71920" />
   <meta name="description" content="Indicadores internos de qualidade J&T: Avaria, Extravio e PNR." />
   <title>J&T Express | Avaria · Extravio · PNR</title>
-  <link rel="stylesheet" href="/static/style.css?v=3abas-status-auditoria-8" />
-  <script defer src="/static/app.js?v=3abas-status-auditoria-8"></script>
+  <link rel="stylesheet" href="/static/style.css?v=3abas-semana-atual-9" />
+  <script defer src="/static/app.js?v=3abas-semana-atual-9"></script>
 </head>
 <body>
   <header class="topbar">
@@ -30,7 +30,7 @@
 
     <section class="filters-panel" aria-label="Filtros da visão">
       <div class="section-head">
-        <div><span class="eyebrow">CONTROLE DE VISÃO</span><h2>Filtros operacionais</h2><p>Os filtros permanecem ao trocar de aba. Cada indicador tem dados e rankings independentes. Os custos principais excluem Revogado e Apelação.</p></div>
+        <div><span class="eyebrow">CONTROLE DE VISÃO</span><h2>Filtros operacionais</h2><p>Abertura padrão: semana atual, de segunda a domingo. Os filtros continuam editáveis e permanecem ao trocar de aba. Os custos principais excluem Revogado e Apelação.</p></div>
         <div class="head-actions"><button class="btn btn-light" id="resetFilters" type="button">Limpar filtros</button></div>
       </div>
       <div class="filters-grid">
@@ -43,7 +43,7 @@
         <label class="filter-card"><span>Remessa / declaração</span><input id="search" type="search" placeholder="Digite o número" autocomplete="off" /></label>
       </div>
       <div class="quick-row">
-        <div class="quick-links"><span>Período:</span><button data-period="last" type="button">Último dia</button><button data-period="7" type="button" class="active">Últimos 7 dias</button><button data-period="month" type="button">Mês</button><button data-period="all" type="button">Todo o histórico</button></div>
+        <div class="quick-links"><span>Período:</span><button data-period="week" type="button" class="active">Esta semana (seg–dom)</button><button data-period="last" type="button">Último dia</button><button data-period="7" type="button">Últimos 7 dias</button><button data-period="month" type="button">Mês</button><button data-period="all" type="button">Todo o histórico</button></div>
         <span id="filterResult" class="filter-result">—</span>
       </div>
     </section>
