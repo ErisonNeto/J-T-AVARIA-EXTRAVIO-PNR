@@ -95,6 +95,8 @@ def main():
     parser.add_argument("--aplicar", action="store_true",
                         help="autoriza o envio de UPSERT para a JT API")
     parser.add_argument("--lote", type=int, default=300)
+    parser.add_argument("--permitir-status-nao-final", action="store_true",
+                        help="autoriza incluir Revogado/Apelação no valor consolidado após conferência")
     args = parser.parse_args()
     if not 20 <= args.lote <= 1000:
         parser.error("--lote precisa estar entre 20 e 1000")
@@ -109,6 +111,23 @@ def main():
     total = sum(int(row["valor_centavos"]) for row in source)
     print(f"Tabela: {TABLE} | Registros Orlean: {len(source):,} | Valor: R$ {total/100:,.2f}")
     print("Indicadores:", counts)
+    # Não alterar valores nem estados silenciosamente: alertar e exigir
+    # autorização explícita quando o relatório contém situações não finais.
+    finais = {"Processo encerrado", "Arbitragem finalizada"}
+    nao_finais = [r for r in source if (r.get("status") or "") not in finais]
+    if nao_finais:
+        from collections import Counter
+        status_counts = Counter(r.get("status") or "(sem status)" for r in nao_finais)
+        amount = sum(int(r["valor_centavos"]) for r in nao_finais)
+        print("ATENÇÃO: situações não finais ou revogadas:", dict(status_counts))
+        print(f"  {len(nao_finais):,} ocorrências somam R$ {amount / 100:,.2f} no consolidado bruto.")
+        if args.aplicar and not args.permitir_status_nao_final:
+            raise RuntimeError(
+                "Carga bloqueada antes de escrever no banco: Revogado/Apelação "
+                "entram no total bruto. Defina a regra de negócio antes de publicar. "
+                "Se a inclusão for intencional, utilize --permitir-status-nao-final "
+                "junto com --aplicar."
+            )
 
     with httpx.Client() as sess:
         if not list_rows(call(sess, "/query", {"sql": "SELECT 1 AS ok", "params": []})):
