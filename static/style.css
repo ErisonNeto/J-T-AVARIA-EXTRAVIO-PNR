@@ -4,3 +4,19 @@
 @media(max-width:760px){.topbar,.container{width:calc(100% - 20px)}.topbar{margin-top:10px;border-radius:15px}.topbar-inner{padding:20px 17px;display:block;min-height:0}.topbar h1{font-size:32px;margin-top:12px}.topbar p{font-size:12px}.last-date{text-align:left;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-top:15px}.last-date strong{font-size:16px;margin:0}.last-date small{width:100%}.dashboard-tabs{gap:3px;padding:5px}.dashboard-tab{min-width:0;flex:1;font-size:12px;padding:11px 5px;gap:5px}.tab-marker{display:none}.tab-count{padding:2px 5px;font-size:9px}.filters-panel{padding:15px}.filters-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.filter-card{padding:8px;font-size:9px}.filter-card input,.filter-card select{font-size:11px}.section-head h2{font-size:19px}.section-head p{font-size:11px}.cards{gap:8px}.card{min-height:120px;padding:14px}.kpi-card strong{font-size:clamp(21px,5vw,29px)}.kpi-head>span:first-child{font-size:9px}.kpi-card small{font-size:9px}.summary-strip strong{font-size:16px}.summary-strip>div{padding:12px}.rank-grid,.quality-inner{grid-template-columns:1fr}.chart-area{height:245px;padding:10px}.chart-legend{gap:8px}.chart-legend span:last-child{margin-left:0}.rank-panel th,.rank-panel td{padding:10px 9px}.rank-panel table{min-width:500px}.panel-head{padding:17px 14px 5px}.review-note{margin:7px 12px 13px}.secondary-panel table{min-width:570px}.detail-panel table{min-width:850px}.detail-expanded{grid-template-columns:1fr}.detail-expanded .wide{grid-column:span 1}.quality-inner{padding:0 14px 16px}.footer{line-height:1.6}}
 @media(max-width:420px){.filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi-card strong{font-size:21px}.dashboard-tab{font-size:11px}.topbar h1{font-size:29px}.chart-area{height:205px}}
 @media(max-width:700px){.filters-grid,.filters-grid.is-extravio{grid-template-columns:1fr}.filters-grid.is-extravio .filter-card:last-child{grid-column:auto}}
+
+/* Evolutivo: valores nos pontos e detalhes em hover/toque/teclado. */
+.chart-area{position:relative}
+.chart-point{cursor:pointer;outline:none}
+.chart-hit-point{fill:transparent;pointer-events:all}
+.chart-point:hover .chart-visible-point,.chart-point:focus-visible .chart-visible-point{fill:#d71920;stroke:#fff;stroke-width:3}
+.chart-point:focus-visible .chart-hit-point{fill:rgba(215,25,32,.12);stroke:#d71920;stroke-width:1.5}
+.chart-point-label{fill:#b8171e;font-size:12px;font-weight:800;pointer-events:none;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}
+.chart-tooltip{position:absolute;z-index:4;width:240px;max-width:calc(100% - 10px);padding:12px 14px;background:#1e293b;color:white;border-radius:12px;box-shadow:0 10px 26px rgba(15,23,42,.25);pointer-events:none;font-size:12px;line-height:1.45}
+.chart-tooltip[hidden]{display:none}
+.chart-tooltip-title{display:block;font-size:13px;font-weight:800;margin-bottom:8px}
+.chart-tooltip-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:4px 0}
+.chart-tooltip-row span{color:#cbd5e1}
+.chart-tooltip-row b{font-size:13px;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chart-tooltip-previous{margin-top:9px;border-top:1px solid #475569;padding-top:8px;color:#cbd5e1;font-size:10px}
+@media(max-width:760px){.chart-tooltip{width:205px;padding:9px 11px}.chart-point-label{font-size:11px}}
