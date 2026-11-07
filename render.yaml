@@ -13,9 +13,5 @@ services:
         value: https://jt-api.rockettechbr.com.br
       - key: JT_API_CACHE_SECONDS
         value: "60"
-      - key: DASH_USER
-        sync: false
-      - key: DASH_PASSWORD
-        sync: false
       - key: JT_API_KEY
         sync: false
