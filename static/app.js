@@ -43,6 +43,7 @@ function refreshFilters(){
   fillSelect('secundaria',allForTab.map(r=>r.secundaria),'Todas');
   fillSelect('modalidade',allForTab.map(r=>r.modalidade),'Todas');
   $('originField').classList.toggle('hidden',active!=='Extravio');
+  document.querySelector('.filters-grid').classList.toggle('is-extravio',active==='Extravio');
   for(const type of ['Avaria','Extravio','PNR'])$('tab'+type).textContent=n(data.rows.filter(r=>r.tipo===type).length);
   document.querySelectorAll('[data-tab]').forEach(b=>{b.classList.toggle('is-active',b.dataset.tab===active); b.setAttribute('aria-selected',b.dataset.tab===active?'true':'false')});
 }
