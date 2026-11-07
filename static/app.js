@@ -14,7 +14,7 @@ const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,
 const shiftDay = (s, delta) => {const d=dateObj(s);d.setDate(d.getDate()+delta);return localISO(d)};
 const monday = (s) => {const d=dateObj(s); d.setDate(d.getDate()-(d.getDay()+6)%7);return localISO(d)};
 const sum = (rows) => rows.reduce((a,r)=>a+Number(r.valor_centavos||0),0);
-const filterIds = ['uf','coordenador','supervisor','sc','base','secundaria','modalidade'];
+const filterIds = ['uf','sc','base','secundaria','modalidade'];
 let data = {meta:{datas:{}},rows:[]};
 let active = 'Avaria';
 let allForTab = [], filtered = [];
@@ -31,8 +31,6 @@ function categoryRows(){return data.rows.filter(r=>r.tipo===active);}
 function filtersWithoutDate(rows){const q=$('search').value.trim().toLowerCase();return rows.filter(r=>{
   if($('uf').value && r.uf!==$('uf').value)return false;
   if($('base').value && r.base!==$('base').value)return false;
-  if($('coordenador').value && r.coordenador!==$('coordenador').value)return false;
-  if($('supervisor').value && r.supervisor!==$('supervisor').value)return false;
   if($('sc').value && !managers(r).includes($('sc').value))return false;
   if($('secundaria').value && r.secundaria!==$('secundaria').value)return false;
   if(active==='Extravio' && $('modalidade').value && r.modalidade!==$('modalidade').value)return false;
@@ -43,8 +41,6 @@ function refreshFilters(){
   allForTab=categoryRows();
   fillSelect('uf',allForTab.map(r=>r.uf),'Todas');
   fillSelect('base',allForTab.map(r=>r.base),'Todas');
-  fillSelect('coordenador',allForTab.map(r=>r.coordenador),'Todos');
-  fillSelect('supervisor',allForTab.map(r=>r.supervisor),'Todos');
   fillSelect('sc',allForTab.flatMap(managers),'Todos');
   fillSelect('secundaria',allForTab.map(r=>r.secundaria),'Todas');
   fillSelect('modalidade',allForTab.map(r=>r.modalidade),'Todas');
@@ -79,7 +75,7 @@ function setup(){
   renderQuality();render();
 }
 function activeButton(query,button){document.querySelectorAll(query).forEach(x=>x.classList.toggle('on',x===button));}
-function period(mode){const {min,max}=data.meta.datas||{};if(!max){notify('Importe um histórico para selecionar o período.');return;}
+function period(mode){const {min,max}=data.meta.datas||{};if(!max){notify('Sem histórico disponível na JT API para selecionar o período.');return;}
   let start=min,end=max;if(mode==='last')start=max;else if(mode==='7')start=shiftDay(max,-6);else if(mode==='month')start=max.slice(0,7)+'-01';
   if(min&&start<min)start=min;$('dateStart').value=start;$('dateEnd').value=end;page=1;render();
   document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',b.dataset.period===mode));
