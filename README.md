@@ -20,11 +20,11 @@ O R/M permanece fixo em Orlean (sem filtro exibido). Os filtros são data inicia
 
 ## Qual data o dashboard usa?
 
-- **Data da declaração (coluna L):** é a data do indicador, dos filtros, do evolutivo diário/semanal e das comparações.
-- **Data de fechamento (coluna AC):** preservada na tabela e no CSV detalhado para auditoria; não transfere uma ocorrência de outubro para novembro.
-- **Exemplo conferido:** no relatório exportado em 07/11 há 21.233 declarações datadas de **19/10 a 31/10** (coluna L), embora alguns fechamentos ocorram em novembro. Em **Minha responsabilidade.xls** há 344 declarações de **07/11**. Esses totais são gerais, antes de filtrar pelas bases do Orlean e pelo tipo.
+- **Data de fechamento (coluna AC):** é a data do indicador, filtros, evolutivo diário/semanal e comparações. Uma ocorrência declarada em outubro e encerrada em novembro aparece em novembro.
+- **Data da declaração (coluna L):** permanece no detalhamento e CSV para auditoria.
+- **Exemplo conferido:** no relatório exportado em 07/11 há 21.233 declarações datadas de **19/10 a 31/10** (coluna L), mas algumas foram encerradas em novembro. O evolutivo considera esse fechamento (AC). Em **Minha responsabilidade.xls** há 344 declarações de **07/11**; a data de apuração depende de seu fechamento.
 - Ambos os arquivos podem ser colocados no diretório `entradas/` e serão consolidados por declaração, remessa e base, sem inventar registros em dias intermediários.
-- O backend também corrige a data exibida de registros PostgreSQL gravados antes dessa mudança, priorizando `declarada_em` sobre o antigo campo `data` que podia representar fechamento.
+- O backend prioriza `fechada_em` e utiliza `declarada_em` apenas quando falta a data de fechamento. Histórico gravado com datas distintas continua agrupado pelo fechamento.
 
 **Atenção:** a atualização no GitHub não faz UPSERT automático dos novos arquivos. A carga na JT API permanece separada, com pré-validação e exigência de confirmação explícita para registros revogados/em apelação.
 
