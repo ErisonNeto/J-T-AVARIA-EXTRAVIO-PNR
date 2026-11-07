@@ -18,6 +18,17 @@ Cada aba tem KPIs de custo, quantidade, bases e S/C envolvidos; evoluções diá
 
 O R/M permanece fixo em Orlean (sem filtro exibido). Os filtros são data inicial/final, S/C unificado, base responsável, anomalia secundária e busca por remessa/declaração; a aba Extravio também oferece modalidade. Os valores da coluna AG já estão em **reais (BRL)** e não recebem conversão cambial.
 
+## Situação financeira: finalizados × conferência
+
+O painel mantém todas as arbitragens no PostgreSQL para rastreabilidade, mas separa **dois conjuntos mutuamente exclusivos** em cada aba e período:
+
+- **KPIs financeiros, evolutivo, rankings de ofensores e CSV principal:** apenas `Processo encerrado` ou `Arbitragem finalizada`. Esses são os valores efetivamente considerados como encerrados.
+- **Seção "Revogados e em apelação":** `Revogado`, `Apelação a ser atribuída`, `Apelação no andamento` e qualquer outro status desconhecido/vazio. Contagem e valores são informativos, **não são somados como valor a pagar**, e há exportação CSV detalhada.
+- Filtros por período de **fechamento (coluna AC)**, base, S/C e modalidade são compartilhados; a classificação financeira não depende da data da declaração (L).
+- Os campos antigos da API `meta.total_ativos` e `meta.valor_total_centavos` são totais **brutos históricos**, para compatibilidade. Para integrar à Central de Indicadores use `meta.total_finalizados` e `meta.valor_finalizados_centavos`; use `meta.total_conferencia` e `meta.valor_conferencia_centavos` para a seção de acompanhamento.
+
+O publicador no PC primeiro valida sem gravar. Caso haja statuses Revogado/Apelação, para armazenar o histórico **inclusive em conferência**, é necessário usar explicitamente `--aplicar --permitir-status-nao-final`, depois de atualizar o backend e o frontend. Essa autorização **não altera a classificação dos KPIs**. Nunca publique um CSV de auditoria no repositório.
+
 ## Qual data o dashboard usa?
 
 - **Data de fechamento (coluna AC):** é a data do indicador, filtros, evolutivo diário/semanal e comparações. Uma ocorrência declarada em outubro e encerrada em novembro aparece em novembro.
