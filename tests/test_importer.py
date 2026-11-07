@@ -38,6 +38,28 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(pipeline.money('99.9'),9990)
         self.assertEqual(pipeline.money('0,01'),1)
 
+    def test_xlsx_with_xls_extension_is_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inputs = root / 'entradas'
+            inputs.mkdir()
+            (root / 'dados').mkdir()
+            fake_xlsx(inputs / 'Gestão de colaboradores.xlsx', [
+                {'A':'Nome da Base','G':'Responsável da Região'},
+                {'A':'F PAA-PA','B':'1001','G':'ORLEAN DA SILVA','H':'Coord A'},
+            ])
+            fake_xlsx(inputs / 'Minha responsabilidade.xls', [
+                {'A':'Número de declaração','B':'Número da Remessa',
+                 'D':'Tipo de anomalia primária','AG':'Valor a pagar (yuan)'},
+                {'A':'TEST-1','B':'BR001','D':'Reivindicações rápidas/投诉理赔',
+                 'E':'Assinado não recebido','AE':'F PAA-PA','AG':'12,50',
+                 'G':'Arbitragem finalizada','L':'2026-11-07'},
+            ])
+            with patch.object(pipeline,'ROOT',root), patch.object(pipeline,'DATA',root/'dados'), patch.object(pipeline,'ENTRADAS',inputs):
+                result = pipeline.run_import()
+                self.assertEqual(result['qtd_por_tipo'],{'PNR':1})
+                self.assertEqual(result['valor_total_centavos'],1250)
+
     def test_historical_import_and_management(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);inputs=root/'entradas';inputs.mkdir();(root/'dados').mkdir()
