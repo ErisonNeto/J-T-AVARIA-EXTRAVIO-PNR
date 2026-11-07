@@ -62,6 +62,10 @@ class APIBackendTests(unittest.TestCase):
         finalized = [r for r in bundle["rows"] if r["situacao_financeira"] == "finalizado"]
         review = [r for r in bundle["rows"] if r["situacao_financeira"] == "conferencia"]
         self.assertEqual(len(finalized), 2)
+        self.assertEqual(bundle["meta"]["total_finalizados"], 2)
+        self.assertEqual(bundle["meta"]["valor_finalizados_centavos"], 3500)
+        self.assertEqual(bundle["meta"]["total_conferencia"], 5)
+        self.assertEqual(bundle["meta"]["valor_conferencia_centavos"], 5700)
         self.assertEqual(sum(r["valor_centavos"] for r in finalized), 3500)
         self.assertEqual(len(review), 5)
         self.assertEqual(sum(r["valor_centavos"] for r in review), 5700)
