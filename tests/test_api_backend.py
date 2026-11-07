@@ -38,6 +38,16 @@ class APIBackendTests(unittest.TestCase):
         self.assertEqual(result["meta"]["valor_por_tipo_centavos"]["PNR"], 500)
         self.assertEqual(result["meta"]["datas"]["max"], "2026-11-06")
 
+    def test_old_postgres_closure_date_does_not_move_october_occurrence(self):
+        row = self.sample("Avaria", 1200, 42)
+        row["data"] = "2026-11-06"  # legado: AC usada como data
+        row["declarada_em"] = "2026-10-31"
+        row["fechada_em"] = "2026-11-06"
+        out = dashboard.bundle([row])
+        self.assertEqual(out["rows"][0]["data"], "2026-10-31")
+        self.assertEqual(out["rows"][0]["fechada_em"], "2026-11-06")
+        self.assertEqual(out["meta"]["datas"]["max"], "2026-10-31")
+
     def test_invalid_financial_amount_fails_loudly(self):
         with self.assertRaises(HTTPException):
             dashboard.normalize_rows([self.sample("PNR", "inválido", 1)])
