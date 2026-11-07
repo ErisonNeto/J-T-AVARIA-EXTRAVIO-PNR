@@ -10,6 +10,9 @@ class FilterLayoutTests(unittest.TestCase):
         html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
         js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
         self.assertIn('id="sc"', html)
+        self.assertNotIn('id="uf"', html)
+        self.assertNotIn("$('uf')", js)
+        self.assertIn("r.uf", js)  # UF permanece nos rankings/CSV
         self.assertNotIn('id="coordenador"', html)
         self.assertNotIn('id="supervisor"', html)
         self.assertNotIn('class="filter-card static-filter"', html)
