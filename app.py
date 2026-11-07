@@ -135,9 +135,8 @@ def normalize_rows(records):
     out = []
     for row in records:
         item = {name: row.get(name) for name in COLS}
-        # Compatibilidade com históricos anteriores: a data operacional é L.
-        # Se o banco ainda guardar data=AC, preferir declarada_em para o gráfico.
-        item["data"] = str(item.get("declarada_em") or item.get("fechada_em") or item.get("data") or "")[:10]
+        # Data operacional do ticket: fechamento (AC), inclusive em históricos antigos.
+        item["data"] = str(item.get("fechada_em") or item.get("declarada_em") or item.get("data") or "")[:10]
         item["fechada_em"] = str(item.get("fechada_em") or "")[:10]
         item["declarada_em"] = str(item.get("declarada_em") or "")[:10]
         for field in ("chave", "declaracao", "remessa", "primaria", "secundaria",
@@ -168,7 +167,7 @@ def bundle(records):
             "origem": ["PostgreSQL jt_indicadores / JT API /query"],
             "rm": "ORLEAN",
             "moeda": "BRL",
-            "coluna_data": "Data da declaração (L); fallback data fechamento (AC)",
+            "coluna_data": "Data de fechamento (AC); fallback declaração (L)",
             "total_na_exportacao": None,
             "total_ativos": len(rows),
             "qtd_por_tipo": {group: quantities[group] for group in types},
