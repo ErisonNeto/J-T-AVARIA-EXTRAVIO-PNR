@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#d71920" />
   <meta name="description" content="Indicadores internos de qualidade J&T: Avaria, Extravio e PNR." />
   <title>J&T Express | Avaria · Extravio · PNR</title>
-  <link rel="stylesheet" href="/static/style.css?v=3abas-1" />
-  <script defer src="/static/app.js?v=3abas-1"></script>
+  <link rel="stylesheet" href="/static/style.css?v=3abas-filtros-2" />
+  <script defer src="/static/app.js?v=3abas-filtros-2"></script>
 </head>
 <body>
   <header class="topbar">
@@ -38,13 +38,10 @@
         <label class="filter-card"><span>Data final</span><input id="dateEnd" type="date" /></label>
         <label class="filter-card"><span>UF</span><select id="uf"><option value="">Todas</option></select></label>
         <label class="filter-card"><span>S/C</span><select id="sc"><option value="">Todos</option></select></label>
-        <label class="filter-card"><span>Coordenador</span><select id="coordenador"><option value="">Todos</option></select></label>
-        <label class="filter-card"><span>Supervisor</span><select id="supervisor"><option value="">Todos</option></select></label>
         <label class="filter-card"><span>Base responsável</span><select id="base"><option value="">Todas</option></select></label>
         <label class="filter-card"><span>Anomalia secundária</span><select id="secundaria"><option value="">Todas</option></select></label>
         <label class="filter-card" id="originField"><span>Origem do extravio</span><select id="modalidade"><option value="">Todas</option></select></label>
         <label class="filter-card"><span>Remessa / declaração</span><input id="search" type="search" placeholder="Digite o número" autocomplete="off" /></label>
-        <div class="filter-card static-filter"><span>R/M</span><strong>ORLEAN</strong></div>
       </div>
       <div class="quick-row">
         <div class="quick-links"><span>Período:</span><button data-period="last" type="button">Último dia</button><button data-period="7" type="button" class="active">Últimos 7 dias</button><button data-period="month" type="button">Mês</button><button data-period="all" type="button">Todo o histórico</button></div>
