@@ -122,15 +122,61 @@ function renderChart(){
   const curMap=groupChart(inPeriod(base,start,end));const prevMap=groupChart(inPeriod(base,startPrev,endPrev),7);
   const metric=(r)=>chartMetric==='count'?(r?.count||0):((r?.value||0)/100);
   const current=dates.map(k=>metric(curMap.get(k))),previous=dates.map(k=>metric(prevMap.get(k)));
-  const w=1020,h=320,left=72,right=22,top=15,bottom=45,max=Math.max(1,...current,...previous);
+  const w=1020,h=320,left=72,right=22,top=42,bottom=45,max=Math.max(1,...current,...previous);
   const yMax=Math.ceil(max/4)*4||4;const pts=chartCoords(current,yMax,w,h,left,right,top,bottom),ref=chartCoords(previous,yMax,w,h,left,right,top,bottom);
   const path=(p)=>p.map(([x,y],i)=>`${i?'L':'M'}${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
   const baseY=h-bottom;let svg=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolução de ${esc(active)}"><defs><linearGradient id="fadeRed" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#d71920" stop-opacity=".18"/><stop offset="100%" stop-color="#d71920" stop-opacity="0"/></linearGradient></defs>`;
   for(let i=0;i<=4;i++){const value=yMax*i/4,y=baseY-(baseY-top)*i/4;svg+=`<line x1="${left}" y1="${y}" x2="${w-right}" y2="${y}" stroke="#e5e9ef" stroke-dasharray="3 5"/><text x="${left-12}" y="${y+4}" text-anchor="end" fill="#8792a0" font-size="12">${esc(chartMetric==='value'?'R$ '+compact(value):compact(value))}</text>`}
   svg+=`<path d="${path(pts)} L ${pts[pts.length-1][0]},${baseY} L ${pts[0][0]},${baseY} Z" fill="url(#fadeRed)"/><path d="${path(ref)}" stroke="#b4bdc9" stroke-width="2.6" stroke-dasharray="7 6" fill="none" stroke-linejoin="round"/><path d="${path(pts)}" stroke="#d71920" stroke-width="3.1" fill="none" stroke-linejoin="round"/>`;
   const maxLabels=Math.min(dates.length,8);const ticks=new Set(Array.from({length:maxLabels},(_,i)=>Math.round(i*(dates.length-1)/Math.max(1,maxLabels-1))));
-  dates.forEach((k,i)=>{const [x,y]=pts[i];if(dates.length<=65)svg+=`<circle cx="${x}" cy="${y}" r="3.9" fill="#fff" stroke="#d71920" stroke-width="2"><title>${esc(chartPeriod==='week'?'Semana de '+isoBR(k):isoBR(k))}: ${esc(chartMetric==='count'?n(current[i])+' ocorrências':brl.format(current[i]))}</title></circle>`;if(ticks.has(i))svg+=`<text x="${x}" y="${h-13}" font-size="11" fill="#8d98a6" text-anchor="middle">${k.slice(8,10)}/${k.slice(5,7)}</text>`});
+  dates.forEach((k,i)=>{
+    const [x,y]=pts[i];
+    if(ticks.has(i))svg+=`<text x="${x}" y="${h-13}" font-size="11" fill="#8d98a6" text-anchor="middle">${k.slice(8,10)}/${k.slice(5,7)}</text>`;
+  });
+  dates.forEach((k,i)=>{
+    const [x,y]=pts[i];
+    const dayLabel=chartPeriod==='week'?'Semana de '+isoBR(k):isoBR(k);
+    const valueLabel=chartMetric==='count'?n(current[i]):('R$ '+compact(current[i]));
+    if(dates.length<=12 && current[i]>0){
+      svg+=`<text x="${x}" y="${Math.max(20,y-16)}" class="chart-point-label" text-anchor="middle">${esc(valueLabel)}</text>`;
+    }
+    svg+=`<g class="chart-point" data-chart-point="${i}" role="button" tabindex="0" aria-label="${esc(dayLabel)}: ${n(curMap.get(k)?.count||0)} ocorrências; ${esc(money(curMap.get(k)?.value||0))}">`+
+      `<circle class="chart-hit-point" cx="${x}" cy="${y}" r="16" />`+
+      `<circle class="chart-visible-point" cx="${x}" cy="${y}" r="4.2" fill="#fff" stroke="#d71920" stroke-width="2.2" />`+
+      `</g>`;
+  });
   svg+='</svg>';el.innerHTML=svg;
+  const tip=document.createElement('div');tip.className='chart-tooltip';tip.hidden=true;
+  tip.setAttribute('role','status');el.appendChild(tip);
+  let pinned=false;
+  function showPoint(index){
+    const k=dates[index],now=curMap.get(k)||{count:0,value:0},previous=prevMap.get(k)||{count:0,value:0};
+    const label=chartPeriod==='week'?'Semana de '+isoBR(k):isoBR(k);
+    const prevLabel=chartPeriod==='week'?'Semana anterior':'Mesmo dia, 7 dias antes';
+    tip.innerHTML='<strong class="chart-tooltip-title">'+esc(label)+'</strong>'+
+      '<div class="chart-tooltip-row"><span>Quantidade</span><b>'+n(now.count)+'</b></div>'+
+      '<div class="chart-tooltip-row"><span>Valor (R$)</span><b>'+esc(money(now.value))+'</b></div>'+
+      '<div class="chart-tooltip-previous">'+esc(prevLabel)+': '+n(previous.count)+' ocorr. · '+esc(money(previous.value))+'</div>';
+    tip.hidden=false;
+    const dot=el.querySelector('[data-chart-point="'+index+'"] .chart-visible-point');
+    if(!dot)return;
+    const rect=el.getBoundingClientRect(),circle=dot.getBoundingClientRect();
+    const cx=circle.left-rect.left+circle.width/2,cy=circle.top-rect.top+circle.height/2;
+    const desiredX=cx>rect.width/2?cx-tip.offsetWidth-15:cx+15;
+    tip.style.left=Math.max(5,Math.min(desiredX,rect.width-tip.offsetWidth-5))+'px';
+    tip.style.top=Math.max(5,Math.min(cy-tip.offsetHeight-15,rect.height-tip.offsetHeight-5))+'px';
+  }
+  el.querySelectorAll('[data-chart-point]').forEach(point=>{
+    const index=Number(point.dataset.chartPoint);
+    point.addEventListener('pointerenter',()=>{if(!pinned)showPoint(index)});
+    point.addEventListener('pointerleave',()=>{if(!pinned)tip.hidden=true});
+    point.addEventListener('focus',()=>showPoint(index));
+    point.addEventListener('blur',()=>{if(!pinned)tip.hidden=true});
+    point.addEventListener('click',(event)=>{event.stopPropagation();if(pinned && Number(tip.dataset.index)===index){pinned=false;tip.hidden=true}else{pinned=true;tip.dataset.index=String(index);showPoint(index)}});
+    point.addEventListener('keydown',(event)=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();point.dispatchEvent(new MouseEvent('click',{bubbles:true}))}else if(event.key==='Escape'){pinned=false;tip.hidden=true}});
+  });
+  el.addEventListener('click',event=>{if(!event.target.closest('[data-chart-point]')){pinned=false;tip.hidden=true}});
+  el.addEventListener('pointerleave',()=>{if(!pinned)tip.hidden=true});
   $('chartCoverage').textContent=n(dates.length)+(chartPeriod==='week'?' semanas (seg–dom)':' dias')+' · '+isoBR(start)+' a '+isoBR(end);
 }
 function compact(value){if(value>=1e6)return (value/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';if(value>=1e3)return (value/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil';return Number(value).toLocaleString('pt-BR',{maximumFractionDigits:1})}
