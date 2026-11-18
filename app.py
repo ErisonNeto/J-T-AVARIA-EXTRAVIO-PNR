@@ -34,12 +34,28 @@ COLS = (
     "valor_centavos", "data", "descricao", "comentario_decisao",
     "comentario_contestacao",
 )
+# A atribuição vigente vem do PostgreSQL; o histórico de ocorrências
+# permanece intacto. O LEFT JOIN não multiplica linhas (view única por estação).
+GESTAO_VIEW = "jt_operacao.vw_gestao_colaboradores_atual"
+_DIMENSOES = {
+    "base": "COALESCE(NULLIF(BTRIM(g.nome_base), ''), a.base)",
+    "uf": "COALESCE(NULLIF(BTRIM(g.uf), ''), a.uf)",
+    "rm": "COALESCE(NULLIF(BTRIM(g.responsavel_regiao), ''), a.rm)",
+    "coordenador": "COALESCE(g.coordenador, a.coordenador)",
+    "supervisor": "COALESCE(g.supervisor, a.supervisor)",
+}
 QUERY = (
-    "SELECT " + ", ".join(COLS) +
-    " FROM public." + TABLE +
-    " WHERE POSITION('ORLEAN' IN UPPER(COALESCE(rm, ''))) > 0"
-    " ORDER BY data DESC NULLS LAST, chave DESC"
+    "SELECT " + ", ".join(
+        (_DIMENSOES[col] + " AS " + col) if col in _DIMENSOES else ("a." + col)
+        for col in COLS
+    ) +
+    " FROM public." + TABLE + " a" +
+    " LEFT JOIN " + GESTAO_VIEW + " g ON g.estacao_no = BTRIM(a.codigo_base::text)" +
+    " WHERE POSITION('ORLEAN' IN UPPER(COALESCE(" +
+    "NULLIF(BTRIM(g.responsavel_regiao), ''), a.rm, ''))) > 0" +
+    " ORDER BY a.data DESC NULLS LAST, a.chave DESC"
 )
+
 PAGE_SIZE = 500
 MAX_ROWS = 100000
 
