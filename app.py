@@ -41,8 +41,8 @@ _DIMENSOES = {
     "base": "COALESCE(NULLIF(BTRIM(g.nome_base), ''), a.base)",
     "uf": "COALESCE(NULLIF(BTRIM(g.uf), ''), a.uf)",
     "rm": "COALESCE(NULLIF(BTRIM(g.responsavel_regiao), ''), a.rm)",
-    "coordenador": "COALESCE(g.coordenador, a.coordenador)",
-    "supervisor": "COALESCE(g.supervisor, a.supervisor)",
+    "coordenador": "CASE WHEN g.estacao_no IS NOT NULL THEN g.coordenador ELSE a.coordenador END",
+    "supervisor": "CASE WHEN g.estacao_no IS NOT NULL THEN g.supervisor ELSE a.supervisor END",
 }
 QUERY = (
     "SELECT " + ", ".join(
