@@ -61,7 +61,9 @@ class FilterLayoutTests(unittest.TestCase):
 
     def test_regional_is_fixed_on_server(self):
         backend = (ROOT / "app.py").read_text(encoding="utf-8")
-        self.assertIn("POSITION('ORLEAN' IN UPPER(COALESCE(rm, '')))", backend)
+        self.assertIn("jt_operacao.vw_gestao_colaboradores_atual", backend)
+        self.assertIn("g.responsavel_regiao", backend)
+        self.assertIn("POSITION('ORLEAN' IN UPPER(COALESCE(", backend)
 
 
 if __name__ == "__main__":
