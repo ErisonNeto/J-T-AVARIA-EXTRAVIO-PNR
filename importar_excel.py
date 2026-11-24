@@ -189,6 +189,10 @@ def combine(gestao, raw, source, import_count, dup_count):
     missing_examples = {}
     excluded = Counter()
     for item in raw.values():
+        # NUNCA inventar fechamento usando declaração (L).
+        # Ocorrências sem AC permanecem no histórico bruto para futuras atualizações.
+        if not item.get('fechada_em'):
+            continue
         key = norm(item['base_responsavel'])
         matched = consolidated.get(key)
         if matched is None:
@@ -209,7 +213,7 @@ def combine(gestao, raw, source, import_count, dup_count):
                   'sc': matched['coordenador'] or matched['supervisor'] or 'Sem S/C cadastrado'})
         # Indicador de tickets finalizados: agrupar pelo fechamento (AC).
         # Declaração (L) fica disponível para a auditoria.
-        r['data'] = item['fechada_em'] or item['declarada_em']
+        r['data'] = item['fechada_em']
         mapped.append(r)
     mapped.sort(key=lambda r: (r['data'], r['declaracao']), reverse=True)
     all_dates = [r['data'] for r in mapped if r['data']]
@@ -219,7 +223,7 @@ def combine(gestao, raw, source, import_count, dup_count):
     summary = {
         'origem': source, 'gerado_em': dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).isoformat(timespec='seconds'),
         'rm': 'ORLEAN DA SILVA DO NASCIMENTO', 'moeda': 'BRL',
-        'coluna_data': 'AC - Data de fechamento; fallback L - Data de declaração',
+        'coluna_data': 'AC - Data de fechamento/finalização (somente AC; L apenas auditoria)',
         'total_na_exportacao': len(raw), 'total_ativos': len(mapped),
         'qtd_por_tipo': dict(stats), 'valor_por_tipo_centavos': totals,
         'valor_total_centavos': sum(r['valor_centavos'] for r in mapped),
@@ -233,7 +237,7 @@ def combine(gestao, raw, source, import_count, dup_count):
         'fora_escopo_orlean': dict(excluded),
         'importados_nesta_execucao': import_count,
         'duplicidades_sobrescritas': dup_count,
-        'criterio': 'Apenas bases vinculadas ao R/M Orlean na Gestão. Valores AG já estão em reais.',
+        'criterio': 'Somente AC: ocorrências sem data de finalização ficam fora do indicador. Apenas bases vinculadas ao R/M Orlean na Gestão. Valores AG em reais.',
     }
     return {'meta': summary, 'rows': mapped}
 
