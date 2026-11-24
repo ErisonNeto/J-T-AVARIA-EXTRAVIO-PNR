@@ -15,7 +15,6 @@ import sys
 import zipfile
 from collections import Counter
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -26,7 +25,7 @@ REPO = Path(__file__).resolve().parent
 DETALHE = "jt_arbitragem_mensal_detalhe"
 ATIVO = "jt_arbitragem_mensal_ativo"
 TIPOS = ("Avaria", "Extravio", "PNR")
-FINALIZADOS = {"Processo encerrado", "Arbitragem finalizada"}
+FINALIZADOS = {"PROCESSOENCERRADO", "ARBITRAGEMFINALIZADA"}
 
 
 def consultar(session: httpx.Client, sql: str, params=None) -> list[dict]:
@@ -55,7 +54,7 @@ def mes_valido(value: str) -> str:
 
 def limite_mes(mes: str) -> str:
     y, m = map(int, mes.split("-"))
-    hoje = dt.datetime.now(ZoneInfo("America/Belem")).date()
+    hoje = dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).date()
     ontem = hoje - dt.timedelta(days=1)
     ultimo = dt.date(y, m, calendar.monthrange(y, m)[1])
     if dt.date(y, m, 1) > ontem:
@@ -130,8 +129,8 @@ def carregar_snapshot(arquivo: Path, gestao: Path, mes: str, limite: str):
         "outros_meses": dict(sorted(outros_meses.items())),
         "status_mes_todas_regionais": dict(status),
         "tipos_orlean": dict(Counter(r["tipo"] for r in linhas)),
-        "finalizados_orlean": sum(r["status"] in FINALIZADOS for r in linhas),
-        "auditoria_orlean": sum(r["status"] not in FINALIZADOS for r in linhas),
+        "finalizados_orlean": sum(norm(r["status"]) in FINALIZADOS for r in linhas),
+        "auditoria_orlean": sum(norm(r["status"]) not in FINALIZADOS for r in linhas),
         "valor_centavos": sum(r["valor_centavos"] for r in linhas),
     }
     return linhas, resumo
@@ -200,7 +199,7 @@ def main():
         if ativo and int(resumo["fechamentos_orlean"]) < int(ativo["total"]) * 0.7 and not args.aceitar_reducao:
             raise RuntimeError(
                 f"Nova carga com {len(linhas)} ocorrências, contra {ativo['total']} "
-                "na versão ativa. Redução >30%% bloqueada; confira a cobertura "
+                "na versão ativa. Redução >30% bloqueada; confira a cobertura "
                 "mensal e use --aceitar-reducao somente se estiver correta."
             )
         pacote = []
