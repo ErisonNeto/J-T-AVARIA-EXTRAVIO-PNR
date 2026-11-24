@@ -111,13 +111,15 @@ class APIBackendTests(unittest.TestCase):
         november_old = self.sample("Extravio", 9900, 2)
         november_new = self.sample("Extravio", 1200, 3)
         november_new["fechada_em"] = "2026-11-12"
-        with patch.object(dashboard, "table_exists", return_value=True), \\
-             patch.object(dashboard, "query_api", return_value=[
-                 {"mes": "2026-11", "carga_id": "v2", "total": 1}
-             ]), \\
-             patch.object(dashboard, "fetch_pages", side_effect=[
-                 [october, november_old], [november_new]
-             ]) as fetch:
+        with (
+            patch.object(dashboard, "table_exists", return_value=True),
+            patch.object(dashboard, "query_api", return_value=[
+                {"mes": "2026-11", "carga_id": "v2", "total": 1}
+            ]),
+            patch.object(dashboard, "fetch_pages", side_effect=[
+                [october, november_old], [november_new]
+            ]) as fetch,
+        ):
             output = dashboard.read_database()
         self.assertEqual(
             {r["chave"] for r in output}, {october["chave"], november_new["chave"]}
