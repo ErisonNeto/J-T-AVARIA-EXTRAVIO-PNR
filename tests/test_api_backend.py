@@ -105,6 +105,25 @@ class APIBackendTests(unittest.TestCase):
                 self.assertEqual(result.status_code, 200)
                 self.assertEqual(result.json()["rows"], [])
 
+    def test_monthly_active_snapshot_replaces_legacy_month_only(self):
+        october = self.sample("Avaria", 1100, 1)
+        october["fechada_em"] = "2026-10-15"
+        november_old = self.sample("Extravio", 9900, 2)
+        november_new = self.sample("Extravio", 1200, 3)
+        november_new["fechada_em"] = "2026-11-12"
+        with patch.object(dashboard, "table_exists", return_value=True), \\
+             patch.object(dashboard, "query_api", return_value=[
+                 {"mes": "2026-11", "carga_id": "v2", "total": 1}
+             ]), \\
+             patch.object(dashboard, "fetch_pages", side_effect=[
+                 [october, november_old], [november_new]
+             ]) as fetch:
+            output = dashboard.read_database()
+        self.assertEqual(
+            {r["chave"] for r in output}, {october["chave"], november_new["chave"]}
+        )
+        self.assertEqual(fetch.call_count, 2)
+
     def test_fixed_sql_only_orlean_and_paginates(self):
         self.assertIn("ORLEAN", dashboard.QUERY)
         self.assertIn("jt_arbitragem_ocorrencias", dashboard.QUERY)
