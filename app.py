@@ -111,18 +111,72 @@ def query_api(sql: str, params: list):
         raise HTTPException(503, "JT API retornou um formato inválido para o indicador.") from None
 
 
-def read_database():
-    all_rows = []
+def fetch_pages(sql: str, params=None):
+    """Busca todas as linhas de uma consulta paginada, sem truncar silenciosamente."""
+    result = []
     offset = 0
+    fixed = params or []
     while True:
-        batch = query_api(QUERY + " LIMIT %s OFFSET %s", [PAGE_SIZE, offset])
-        all_rows.extend(batch)
-        if len(all_rows) > MAX_ROWS:
-            raise HTTPException(503, "O histórico excede 100.000 ocorrências; implementar consulta por período.")
+        batch = query_api(sql + " LIMIT %s OFFSET %s", [*fixed, PAGE_SIZE, offset])
+        result.extend(batch)
+        if len(result) > MAX_ROWS:
+            raise HTTPException(503, "O histórico excede 100.000 ocorrências; implementar paginação por período.")
         if len(batch) < PAGE_SIZE:
             break
         offset += len(batch)
-    return all_rows
+    return result
+
+
+def table_exists(table: str) -> bool:
+    rows = query_api(
+        "SELECT COUNT(*) AS qtd FROM information_schema.tables "
+        "WHERE table_schema = 'public' AND table_name = %s",
+        [table],
+    )
+    return bool(rows and int(rows[0].get("qtd", 0)))
+
+
+def read_database():
+    """Prioriza snapshot mensal ativo; meses não migrados usam o legado, só com AC."""
+    detail_table = "jt_arbitragem_mensal_detalhe"
+    active_table = "jt_arbitragem_mensal_ativo"
+    manifest = []
+    if table_exists(active_table):
+        manifest = query_api(
+            "SELECT mes, carga_id, total FROM public." + active_table + " ORDER BY mes",
+            [],
+        )
+    # Histórico legado só serve para meses AINDA SEM snapshot mensal ativo.
+    legacy = fetch_pages(QUERY)
+    active_months = {str(row["mes"]) for row in manifest}
+    output = [
+        row for row in legacy
+        if str(row.get("fechada_em") or "")[:7] not in active_months
+    ]
+    if not manifest:
+        return output
+    if not table_exists(detail_table):
+        raise HTTPException(503, "Manifesto mensal existe, mas faltam os detalhes versionados.")
+    columns = ", ".join(COLS)
+    for month in manifest:
+        mes = str(month["mes"])
+        versao = str(month["carga_id"])
+        sql = (
+            "SELECT " + columns + " FROM public." + detail_table +
+            " WHERE mes = %s AND carga_id = %s "
+            "AND POSITION('ORLEAN' IN UPPER(COALESCE(rm, ''))) > 0 "
+            "ORDER BY data DESC NULLS LAST, chave DESC"
+        )
+        records = fetch_pages(sql, [mes, versao])
+        expected = int(month["total"])
+        if len(records) != expected:
+            raise HTTPException(
+                503,
+                f"Snapshot mensal {mes} incompleto: {len(records)} de {expected} linhas. "
+                "A versão anterior deve ser conferida antes de exibir o indicador.",
+            )
+        output.extend(records)
+    return output
 
 
 def normalize_rows(records):
@@ -130,8 +184,11 @@ def normalize_rows(records):
     for row in records:
         item = {name: row.get(name) for name in COLS}
         # Data operacional do ticket: fechamento (AC), inclusive em históricos antigos.
-        item["data"] = str(item.get("fechada_em") or item.get("declarada_em") or item.get("data") or "")[:10]
         item["fechada_em"] = str(item.get("fechada_em") or "")[:10]
+        # Sem AC não há finalização comprovada: a data L NUNCA vira data do indicador.
+        if not item["fechada_em"]:
+            continue
+        item["data"] = item["fechada_em"]
         item["declarada_em"] = str(item.get("declarada_em") or "")[:10]
         for field in ("chave", "declaracao", "remessa", "primaria", "secundaria",
                       "status", "base_responsavel", "base", "codigo_base", "uf",
@@ -165,7 +222,7 @@ def bundle(records):
             "origem": ["PostgreSQL jt_indicadores / JT API /query"],
             "rm": "ORLEAN",
             "moeda": "BRL",
-            "coluna_data": "Data de fechamento (AC); fallback declaração (L)",
+            "coluna_data": "Somente data de fechamento/finalização (AC); sem fallback",
             "total_na_exportacao": None,
             "total_ativos": len(rows),
             "qtd_por_tipo": {group: quantities[group] for group in types},
@@ -187,7 +244,7 @@ def bundle(records):
             "sem_correspondencia_global": None,
             "sem_correspondencia_detalhes": [],
             "fora_escopo_orlean": None,
-            "criterio": "Fechamento AC; KPIs apenas Processo encerrado / Arbitragem finalizada. Revogado, apelações e demais status ficam em conferência. Valores em BRL.",
+            "criterio": "Somente fechamento AC; KPIs apenas Processo encerrado / Arbitragem finalizada. Sem AC, não aparece no mês. Revogado e apelações com AC ficam em conferência. Valores em BRL.",
         },
         "rows": rows,
     }
