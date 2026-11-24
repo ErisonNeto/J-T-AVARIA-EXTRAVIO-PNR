@@ -53,7 +53,7 @@ class PipelineTests(unittest.TestCase):
                  'D':'Tipo de anomalia primária','AG':'Valor a pagar (yuan)'},
                 {'A':'TEST-1','B':'BR001','D':'Reivindicações rápidas/投诉理赔',
                  'E':'Assinado não recebido','AE':'F PAA-PA','AG':'12,50',
-                 'G':'Arbitragem finalizada','L':'2026-11-07'},
+                 'G':'Arbitragem finalizada','L':'2026-11-07','AC':'2026-11-07'},
             ])
             with patch.object(pipeline,'ROOT',root), patch.object(pipeline,'DATA',root/'dados'), patch.object(pipeline,'ENTRADAS',inputs):
                 result = pipeline.run_import()
@@ -93,6 +93,33 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(summary['datas'], {'min':'2026-11-06','max':'2026-11-07'})
                 self.assertIn('AC - Data de fechamento', summary['coluna_data'])
 
+    def test_no_ac_never_inherits_declaration_date(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inputs = root / "entradas"
+            inputs.mkdir()
+            (root / "dados").mkdir()
+            fake_xlsx(inputs / "Gestão de colaboradores.xlsx", [
+                {"A": "Nome da Base", "G": "Responsável da Região"},
+                {"A": "F PA-PA", "B": "777", "G": "ORLEAN DA SILVA"},
+            ])
+            fake_xlsx(inputs / "mensal.xlsx", [
+                {"A": "Número da declaração", "B": "Número da Remessa",
+                 "D": "Tipo de anomalia", "AG": "Valor a pagar (yuan)"},
+                {"A": "SEM-AC", "B": "BR1", "D": "AVARIA 破损",
+                 "G": "Arbitragem finalizada", "L": "2026-11-10",
+                 "AE": "F PA-PA", "AG": "19.00"},
+                {"A": "COM-AC", "B": "BR2", "D": "EXTRAVIO-遗失",
+                 "G": "Arbitragem finalizada", "L": "2026-10-30",
+                 "AC": "2026-11-12", "AE": "F PA-PA", "AG": "25.00"},
+            ])
+            with patch.object(pipeline, "ROOT", root), patch.object(pipeline, "DATA", root / "dados"), patch.object(pipeline, "ENTRADAS", inputs):
+                summary = pipeline.run_import()
+                self.assertEqual(summary["total_ativos"], 1)
+                painel = json.loads((root / "dados/painel.json").read_text(encoding="utf-8"))
+                self.assertEqual(painel["rows"][0]["declaracao"], "COM-AC")
+                self.assertEqual(painel["rows"][0]["data"], "2026-11-12")
+
     def test_historical_import_and_management(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);inputs=root/'entradas';inputs.mkdir();(root/'dados').mkdir()
@@ -104,15 +131,15 @@ class PipelineTests(unittest.TestCase):
             head={'A':'Número da declaração','B':'Número da Remessa','D':'Tipo de anomalia primária',
                   'E':'Tipo secundário','AG':'Valor a pagar (yuan)'}
             rows=[head,
-                {'A':'Z1','B':'111','D':'AVARIA 破损','E':'Embalagem','AE':'F PAA-PA','L':'2026-11-01','AG':'10,50'},
-                {'A':'Z2','B':'222','D':'EXTRAVIO-遗失','E':'Extrav.','AE':'F PAA-PA','L':'2026-11-02','AG':'12,00'},
-                {'A':'Z3','B':'333','D':'FORA DO PRAZO SLA CADEIA 超SLA时效延误','AE':'F PAB-PA','L':'2026-11-03','AG':'25,00'},
-                {'A':'Z4','B':'444','D':'Reivindicações rápidas/投诉理赔','E':'Assinado não recebido','AE':'F PAA-PA','L':'2026-11-04','AG':'2,00'},
-                {'A':'Z5','B':'555','D':'Reivindicações rápidas/投诉理赔','AE':'F OUT-SP','L':'2026-11-04','AG':'99,00'},
-                {'A':'Z6','B':'666','D':'ROUBO/SINISTRO','AE':'F PAA-PA','L':'2026-11-04','AG':'1,00'},
-                {'A':'Z7','B':'777','D':'AVARIA 破损','AE':'BASE SEM GESTAO','L':'2026-11-04','AG':'1,00'},
-                {'A':'Z8','B':'888','D':'EXTRAVIO-遗失','AE':'F PAA-PA','L':'2026-11-04','AG':'4,00'},
-                {'A':'Z8','B':'888','D':'EXTRAVIO-遗失','AE':'F PAB-PA','L':'2026-11-04','AG':'7,00'}]
+                {'A':'Z1','B':'111','D':'AVARIA 破损','E':'Embalagem','AE':'F PAA-PA','L':'2026-11-01','AC':'2026-11-01','AG':'10,50'},
+                {'A':'Z2','B':'222','D':'EXTRAVIO-遗失','E':'Extrav.','AE':'F PAA-PA','L':'2026-11-02','AC':'2026-11-02','AG':'12,00'},
+                {'A':'Z3','B':'333','D':'FORA DO PRAZO SLA CADEIA 超SLA时效延误','AE':'F PAB-PA','L':'2026-11-03','AC':'2026-11-03','AG':'25,00'},
+                {'A':'Z4','B':'444','D':'Reivindicações rápidas/投诉理赔','E':'Assinado não recebido','AE':'F PAA-PA','L':'2026-11-04','AC':'2026-11-04','AG':'2,00'},
+                {'A':'Z5','B':'555','D':'Reivindicações rápidas/投诉理赔','AE':'F OUT-SP','L':'2026-11-04','AC':'2026-11-04','AG':'99,00'},
+                {'A':'Z6','B':'666','D':'ROUBO/SINISTRO','AE':'F PAA-PA','L':'2026-11-04','AC':'2026-11-04','AG':'1,00'},
+                {'A':'Z7','B':'777','D':'AVARIA 破损','AE':'BASE SEM GESTAO','L':'2026-11-04','AC':'2026-11-04','AG':'1,00'},
+                {'A':'Z8','B':'888','D':'EXTRAVIO-遗失','AE':'F PAA-PA','L':'2026-11-04','AC':'2026-11-04','AG':'4,00'},
+                {'A':'Z8','B':'888','D':'EXTRAVIO-遗失','AE':'F PAB-PA','L':'2026-11-04','AC':'2026-11-04','AG':'7,00'}]
             fake_xlsx(inputs/'arbitragem_1.xlsx',rows)
             with patch.object(pipeline,'ROOT',root),patch.object(pipeline,'DATA',root/'dados'),patch.object(pipeline,'ENTRADAS',inputs):
                 first=pipeline.run_import()
