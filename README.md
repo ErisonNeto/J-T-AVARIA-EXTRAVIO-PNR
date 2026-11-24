@@ -51,15 +51,27 @@ finalizados no mês escolhido. Na hora de gerar o relatório, inclua todas as
 bases e o universo completo de casos. Se a opção AC não existir no JMS,
 não confirme a substituição mensal; confira a cobertura dos fechamentos.
 
-No PowerShell, na raiz do projeto com o `.venv` já configurado e `.env` válido:
+**Detecção automática do JMS:** o script procura o arquivo mais recente com
+nome `*Exportar formulário de declaração de arbitragem*.xlsx` ou `.xls`
+(OOXML), em `entradas/`, na raiz do projeto e em `Downloads` do Windows.
+Exemplo: `2125226711072104450Exportar formulário de declaração de arbitragem2026112410545102098190.xlsx`.
+O horário embutido no nome serve APENAS para ordenar exportações; não
+determina a data das ocorrências. Os dados são filtrados pela coluna AC.
+
+Por padrão, o mês será o de **D-1 no fuso de Belém**. No primeiro dia de
+um mês, seleciona o mês anterior. No PowerShell, com `.venv` e `.env`:
 
 ```powershell
-# 1. Auditoria local, sem tocar no PostgreSQL:
-.\.venv\Scripts\python.exe .\publicar_mes_fechamento.py --arquivo ".\entradas\arbitragem_mensal.xlsx" --mes 2026-11
+# Auditoria, sem publicar:
+.\.venv\Scripts\python.exe .\publicar_mes_fechamento.py
 
-# 2. Depois de conferir origem, cobertura e totais, publicar:
-.\.venv\Scripts\python.exe .\publicar_mes_fechamento.py --arquivo ".\entradas\arbitragem_mensal.xlsx" --mes 2026-11 --aplicar --confirmar-mes 2026-11 --relatorio-mensal-completo
+# Após conferir que o JMS exportou o MÊS INTEIRO filtrado por AC:
+.\.venv\Scripts\python.exe .\publicar_mes_fechamento.py --aplicar --confirmar-mes 2026-11 --relatorio-mensal-completo
 ```
+
+Altere `--confirmar-mes` quando o mês mudar. Se necessário, escolha
+manualmente outro arquivo ou mês com `--arquivo "caminho.xlsx" --mes AAAA-MM`.
+O reconhecimento do nome NÃO garante que o filtro do JMS esteja correto.
 
 Se necessário, informe o caminho da Gestão atual com `--gestao "caminho.xlsx"`.
 O programa lê o arquivo selecionado **sem misturá-lo ao histórico local**.
