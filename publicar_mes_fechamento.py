@@ -42,6 +42,76 @@ def tabela_existe(session: httpx.Client, tabela: str) -> bool:
     return bool(rows and int(rows[0]["qtd"]))
 
 
+def mes_automatico() -> str:
+    """Mês operacional de D-1 no horário de Belém (UTC-3)."""
+    ontem = dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).date() - dt.timedelta(days=1)
+    return ontem.strftime("%Y-%m")
+
+
+def chave_exportacao_jms(path: Path):
+    """Reconhece os nomes numéricos longos do JMS sem usar L como referência."""
+    if not path.is_file() or path.suffix.lower() not in (".xls", ".xlsx"):
+        return None
+    nome = norm(path.stem)
+    marcador = "EXPORTARFORMULARIODEDECLARACAODEARBITRAGEM"
+    indice = nome.find(marcador)
+    if indice < 0:
+        return None
+    sequencia = nome[indice + len(marcador):]
+    data_exportacao = None
+    if len(sequencia) >= 14 and sequencia[:14].isdigit():
+        try:
+            data_exportacao = dt.datetime.strptime(sequencia[:14], "%Y%m%d%H%M%S")
+        except ValueError:
+            pass
+    return data_exportacao
+
+
+def localizar_exportacao_jms(pastas=None) -> Path:
+    """Busca a exportação mais recente em entradas/, raiz e Downloads.
+
+    O timestamp do NOME significa a hora de EXPORTAÇÃO, não o mês de fechamento.
+    Uma exportação incompleta não fica 'completa' só porque o nome é reconhecido.
+    """
+    diretorios = list(pastas) if pastas is not None else [
+        REPO / "entradas", REPO, Path.home() / "Downloads",
+    ]
+    encontrados = []
+    for prioridade, diretorio in enumerate(diretorios):
+        if not diretorio.is_dir():
+            continue
+        for arquivo in diretorio.iterdir():
+            exportacao = chave_exportacao_jms(arquivo)
+            if exportacao is None and "EXPORTARFORMULARIODEDECLARACAODEARBITRAGEM" not in norm(arquivo.stem):
+                continue
+            if not arquivo.is_file() or arquivo.suffix.lower() not in (".xls", ".xlsx"):
+                continue
+            if arquivo.name.startswith("~$"):
+                continue
+            # Timestamp interno é preferível ao horário de cópia do arquivo.
+            carimbo = exportacao.timestamp() if exportacao else arquivo.stat().st_mtime
+            encontrados.append((carimbo, -prioridade, arquivo.stat().st_mtime, arquivo))
+    if not encontrados:
+        raise ValueError(
+            "Nenhuma exportação do JMS encontrada. Coloque o arquivo "
+            "'...Exportar formulário de declaração de arbitragem...xlsx' "
+            "em entradas/, na raiz do projeto ou em Downloads; "
+            "ou informe --arquivo com o caminho completo."
+        )
+    encontrados.sort(key=lambda item: item[:3], reverse=True)
+    escolhido = encontrados[0][3]
+    print(f"EXPORTAÇÃO JMS RECONHECIDA: {escolhido.name}")
+    print(f"LOCAL: {escolhido.parent} | candidatos encontrados: {len(encontrados)}")
+    if len(encontrados) > 1:
+        print("Foi selecionada a exportação mais recente; use --arquivo para escolher outra.")
+    if not zipfile.is_zipfile(escolhido):
+        raise ValueError(
+            f"Arquivo selecionado '{escolhido.name}' não é um Excel OOXML válido. "
+            "Converta .xls binário para .xlsx, sem escolher outro arquivo às cegas."
+        )
+    return escolhido
+
+
 def mes_valido(value: str) -> str:
     try:
         parsed = dt.date.fromisoformat(value + "-01")
@@ -149,9 +219,9 @@ def main():
     p = argparse.ArgumentParser(
         description="Substituição mensal atômica (por versão) de Avaria/Extravio/PNR, usando AC."
     )
-    p.add_argument("--arquivo", required=True, type=Path, help="Relatório MENSAL completo exportado por fechamento (AC)")
+    p.add_argument("--arquivo", type=Path, help="Opcional: caminho específico; por padrão detecta a exportação mais recente do JMS")
     p.add_argument("--gestao", type=Path, default=REPO / "Gestão de colaboradores.xlsx")
-    p.add_argument("--mes", required=True, type=mes_valido, help="AAAA-MM do FECHAMENTO (AC)")
+    p.add_argument("--mes", type=mes_valido, default=mes_automatico(), help="Mês de FECHAMENTO AC (AAAA-MM); padrão: mês de D-1 em Belém")
     p.add_argument("--lote", type=int, default=200)
     p.add_argument("--aplicar", action="store_true", help="Envia snapshot e ativa depois da conferência")
     p.add_argument("--confirmar-mes", type=mes_valido, help="Confirmar explicitamente o mês a substituir")
@@ -162,6 +232,11 @@ def main():
     p.add_argument("--aceitar-cobertura-curta", action="store_true",
                    help="Autoriza excepcionalmente relatório com poucos dias de fechamento, após conferência")
     args = p.parse_args()
+    if args.arquivo is None:
+        args.arquivo = localizar_exportacao_jms()
+    else:
+        args.arquivo = args.arquivo.expanduser().resolve()
+        print(f"EXPORTAÇÃO INFORMADA: {args.arquivo.name} | pasta: {args.arquivo.parent}")
     if not 20 <= args.lote <= 1000:
         p.error("O lote deve ficar entre 20 e 1000.")
     limite = limite_mes(args.mes)
@@ -268,7 +343,7 @@ def main():
                 "carga_id": versao,
                 "total": len(pacote),
                 "valor_centavos": valor,
-                "atualizado_em": dt.datetime.now(ZoneInfo("America/Belem")).isoformat(timespec="seconds"),
+                "atualizado_em": dt.datetime.now(dt.timezone(dt.timedelta(hours=-3))).isoformat(timespec="seconds"),
             }],
             "criar_tabela": not manifesto_existe,
             "adicionar_colunas": False,
