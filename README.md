@@ -39,6 +39,51 @@ O publicador no PC primeiro valida sem gravar. Caso haja statuses Revogado/Apela
 
 **Atenção:** a atualização no GitHub não faz UPSERT automático dos novos arquivos. A carga na JT API permanece separada, com pré-validação e exigência de confirmação explícita para registros revogados/em apelação.
 
+## Nova carga mensal completa (somente fechamento AC)
+
+A partir desta versão, use **`publicar_mes_fechamento.py`** para atualizar Avaria,
+Extravio e PNR. Não utilize o publicador antigo para a rotina mensal.
+
+**Regra operacional:** baixe do JMS um relatório de arbitragens com filtro na
+**data de finalização (coluna AC)**, do dia 1º do mês até **D-1**. Não filtre
+pela data da declaração (L), porque isso excluiria tickets antigos que foram
+finalizados no mês escolhido. Na hora de gerar o relatório, inclua todas as
+bases e o universo completo de casos. Se a opção AC não existir no JMS,
+não confirme a substituição mensal; confira a cobertura dos fechamentos.
+
+No PowerShell, na raiz do projeto com o `.venv` já configurado e `.env` válido:
+
+```powershell
+# 1. Auditoria local, sem tocar no PostgreSQL:
+.\.venv\Scripts\python.exe .\publicar_mes_fechamento.py --arquivo ".\entradas\arbitragem_mensal.xlsx" --mes 2026-11
+
+# 2. Depois de conferir origem, cobertura e totais, publicar:
+.\.venv\Scripts\python.exe .\publicar_mes_fechamento.py --arquivo ".\entradas\arbitragem_mensal.xlsx" --mes 2026-11 --aplicar --confirmar-mes 2026-11 --relatorio-mensal-completo
+```
+
+Se necessário, informe o caminho da Gestão atual com `--gestao "caminho.xlsx"`.
+O programa lê o arquivo selecionado **sem misturá-lo ao histórico local**.
+Somente registros com AC preenchida e no mês indicado entram na versão.
+Declarações abertas e ocorrências sem AC não são projetadas para o dia L.
+Status pendentes com AC permanecem na seção de auditoria, fora dos KPIs financeiros.
+
+A publicação **não remove linhas via DELETE**: grava um snapshot novo em
+`jt_arbitragem_mensal_detalhe`, confere quantidade/soma, e apenas depois
+faz UPSERT de um ponteiro em `jt_arbitragem_mensal_ativo`.
+O dashboard apresenta somente a **versão ativa de cada mês**; meses
+sem snapshot continuam lendo o histórico anterior, exigindo sempre AC.
+As versões anteriores ficam preservadas no banco para eventual recuperação.
+Se ocorrer erro durante o envio, a versão anterior não é substituída.
+
+O primeiro uso depende de a JT API permitir criar as duas tabelas auxiliares
+no PostgreSQL. Confirme a mensagem de conclusão e confira o mês no Render;
+a auditoria local, por si só, não publica dados.
+
+**Segurança:** o publicador histórico `publicar_postgres_via_api.py --aplicar`
+foi bloqueado por padrão para evitar alimentar novamente o legado com dados
+de declaração. A exceção `--modo-legado` existe apenas para manutenção
+consciente, não para atualização mensal.
+
 ## Arquitetura real do projeto
 
 ```text
