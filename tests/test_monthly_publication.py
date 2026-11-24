@@ -1,4 +1,5 @@
 """Testes sintéticos para a substituição mensal estrita pela coluna AC."""
+import os
 import tempfile
 import unittest
 import zipfile
@@ -26,6 +27,32 @@ def fake_xlsx(path, rows):
 
 
 class MonthlyClosureTests(unittest.TestCase):
+    def test_detect_jms_long_filename_and_latest_export_stamp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inputs = root / "entradas"
+            downloads = root / "Downloads"
+            inputs.mkdir()
+            downloads.mkdir()
+            older = inputs / "212111111Exportar formulário de declaração de arbitragem2026112310545102098190.xlsx"
+            newer = downloads / "2125226711072104450Exportar formulário de declaração de arbitragem2026112410545102098190.xlsx"
+            other = inputs / "Gestão de colaboradores.xlsx"
+            for path in (older, newer, other):
+                fake_xlsx(path, [{"A": "x"}])
+            # Apesar de ter sido copiado depois, arquivo antigo não pode ganhar.
+            os.utime(older, (2100000000, 2100000000))
+            self.assertEqual(
+                mensal.localizar_exportacao_jms([inputs, downloads]), newer
+            )
+            self.assertEqual(
+                mensal.chave_exportacao_jms(other), None
+            )
+
+    def test_current_default_month_comes_from_d_minus_one(self):
+        # Independente do nome de exportação: mês deve obedecer D-1 em Belém.
+        self.assertEqual(len(mensal.mes_automatico()), 7)
+        self.assertEqual(mensal.mes_automatico()[4], "-")
+
     def test_month_uses_closure_not_declaration(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
