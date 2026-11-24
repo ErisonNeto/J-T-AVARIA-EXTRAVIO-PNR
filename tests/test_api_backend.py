@@ -15,7 +15,7 @@ class APIBackendTests(unittest.TestCase):
             "tipo": kind, "primaria": "EXTRAVIO-遗失" if kind == "Extravio" else kind,
             "secundaria": "Teste", "base": "BASE A", "codigo_base": "1",
             "rm": "ORLEAN DA SILVA DO NASCIMENTO", "valor_centavos": cents,
-            "data": "2026-11-06",
+            "data": "2026-11-06", "fechada_em": "2026-11-06",
         }
 
     def test_api_receives_positional_rows_with_colunas(self):
@@ -37,6 +37,15 @@ class APIBackendTests(unittest.TestCase):
         self.assertEqual(result["meta"]["valor_total_centavos"], 4500)
         self.assertEqual(result["meta"]["valor_por_tipo_centavos"]["PNR"], 500)
         self.assertEqual(result["meta"]["datas"]["max"], "2026-11-06")
+
+    def test_declared_but_not_closed_does_not_enter_any_day(self):
+        record = self.sample("Avaria", 1200, 9)
+        record["declarada_em"] = "2026-11-09"
+        record["fechada_em"] = None
+        record["data"] = "2026-11-09"  # legado incorreto: não pode valer
+        result = dashboard.bundle([record])
+        self.assertEqual(result["meta"]["total_ativos"], 0)
+        self.assertEqual(result["meta"]["datas"], {"min": "", "max": ""})
 
     def test_closure_date_overrides_legacy_declaration_date(self):
         row = self.sample("Avaria", 1200, 42)
