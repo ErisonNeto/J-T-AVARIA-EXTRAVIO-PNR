@@ -3,6 +3,7 @@
 Este é o ETL do PC operacional, NÃO uma funcionalidade do dashboard Render.
 Sem --aplicar faz apenas validação, sem escrever no servidor.
 Lê relatórios e Gestão localmente usando o importador histórico existente.
+Para substituição mensal por fechamento AC, use publicar_mes_fechamento.py.
 """
 from __future__ import annotations
 
@@ -97,7 +98,15 @@ def main():
     parser.add_argument("--lote", type=int, default=300)
     parser.add_argument("--permitir-status-nao-final", action="store_true",
                         help="autoriza gravar também Revogado/Apelação para auditoria; KPIs continuam apenas com finalizados")
+    parser.add_argument("--modo-legado", action="store_true",
+                        help="autoriza explicitamente a antiga carga histórica por UPSERT (não substitui mês)")
     args = parser.parse_args()
+    if args.aplicar and not args.modo_legado:
+        parser.error(
+            "A publicação por UPSERT foi desativada para evitar datas L e registros antigos. "
+            "Use publicar_mes_fechamento.py --arquivo RELATORIO --mes AAAA-MM; "
+            "para cargas históricas excepcionais use --modo-legado."
+        )
     if not 20 <= args.lote <= 1000:
         parser.error("--lote precisa estar entre 20 e 1000")
     if not KEY or not API_URL.startswith("https://"):
