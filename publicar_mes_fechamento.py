@@ -159,6 +159,8 @@ def main():
                    help="Confirma que o JMS exportou TODO o mês pelo FECHAMENTO AC, e não só um dia")
     p.add_argument("--aceitar-reducao", action="store_true",
                    help="Aceita queda superior a 30%% ante a versão mensal ativa")
+    p.add_argument("--aceitar-cobertura-curta", action="store_true",
+                   help="Autoriza excepcionalmente relatório com poucos dias de fechamento, após conferência")
     args = p.parse_args()
     if not 20 <= args.lote <= 1000:
         p.error("O lote deve ficar entre 20 e 1000.")
@@ -171,9 +173,27 @@ def main():
         print(f"  {chave}: {valor}")
     print(f"VERSÃO: {versao}")
     print("Atenção: um arquivo filtrado pela declaração L NÃO é um snapshot mensal completo.")
+    primeiro_dia = dt.date.fromisoformat(args.mes + "-01")
+    ultimo_dia = dt.date.fromisoformat(limite)
+    dias_periodo = (ultimo_dia - primeiro_dia).days + 1
+    suspeito = (
+        dias_periodo >= 10 and (
+            resumo["dias_com_fechamento"] < 5
+            or dt.date.fromisoformat(resumo["primeiro_fechamento"]) > primeiro_dia + dt.timedelta(days=7)
+            or dt.date.fromisoformat(resumo["ultimo_fechamento"]) < ultimo_dia - dt.timedelta(days=7)
+        )
+    )
+    if suspeito:
+        print("ALERTA: cobertura de datas AC parece curta para um relatório mensal completo.")
     if not args.aplicar:
         print("AUDITORIA LOCAL CONCLUÍDA. Nada foi enviado ao PostgreSQL.")
         return
+    if suspeito and not args.aceitar_cobertura_curta:
+        raise RuntimeError(
+            "Cobertura curta de datas de fechamento AC. A substituição foi bloqueada. "
+            "Baixe a exportação mensal completa; em casos excepcionais confirme "
+            "manualmente com --aceitar-cobertura-curta."
+        )
     if args.confirmar_mes != args.mes or not args.relatorio_mensal_completo:
         raise RuntimeError(
             "Publicação bloqueada. Confirme o mês com --confirmar-mes AAAA-MM "
