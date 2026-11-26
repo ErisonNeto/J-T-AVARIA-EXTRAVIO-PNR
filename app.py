@@ -222,7 +222,7 @@ def bundle(records):
             "origem": ["PostgreSQL jt_indicadores / JT API /query"],
             "rm": "ORLEAN",
             "moeda": "BRL",
-            "coluna_data": "Somente data de fechamento/finalização (AC); sem fallback",
+            "coluna_data": "Somente data de fechamento/finalização; sem fallback",
             "total_na_exportacao": None,
             "total_ativos": len(rows),
             "qtd_por_tipo": {group: quantities[group] for group in types},
