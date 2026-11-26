@@ -49,7 +49,7 @@
     </section>
 
     <section class="cards" aria-label="Indicadores principais">
-      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Valor a pagar</span><span class="kpi-icon">R$</span></div><strong id="kValue">—</strong><small>Somente arbitragem finalizada · Coluna AG em reais</small></article>
+      <article class="card kpi-card kpi-primary"><div class="kpi-head"><span>Valor a pagar</span><span class="kpi-icon">R$</span></div><strong id="kValue">—</strong><small>Somente arbitragem finalizada · Valores em reais</small></article>
       <article class="card kpi-card kpi-neutral"><div class="kpi-head"><span>Ocorrências</span><span class="kpi-icon">Σ</span></div><strong id="kCount">—</strong><small>Somente tickets finalizados no período</small></article>
       <article class="card kpi-card kpi-danger"><div class="kpi-head"><span>Bases ofensoras</span><span class="kpi-icon">!</span></div><strong id="kBases">—</strong><small>Unidades identificadas na Gestão</small></article>
       <article class="card kpi-card kpi-success"><div class="kpi-head"><span>Responsáveis S/C</span><span class="kpi-icon">◎</span></div><strong id="kManagers">—</strong><small>Coordenadores e supervisores distintos</small></article>
@@ -64,7 +64,7 @@
 
     <section class="panel evolution-panel" id="evolucao">
       <div class="section-head panel-head">
-        <div><span class="eyebrow">EVOLUÇÃO OPERACIONAL</span><h2 id="chartTitle">Evolução diária — Avaria</h2><p>Evolução por data de fechamento do ticket (coluna AC). Passe o mouse ou toque para consultar quantidade e valor em R$.</p></div>
+        <div><span class="eyebrow">EVOLUÇÃO OPERACIONAL</span><h2 id="chartTitle">Evolução diária — Avaria</h2><p>Evolução por data de fechamento do ticket. Passe o mouse ou toque para consultar quantidade e valor em R$.</p></div>
         <div class="switch-wrap"><div class="switch" role="group" aria-label="Métrica do gráfico"><button class="on" data-chartmetric="count" type="button">Quantidade</button><button data-chartmetric="value" type="button">Valor (R$)</button></div><div class="switch" role="group" aria-label="Agrupamento do gráfico"><button class="on" data-chartperiod="day" type="button">Diário</button><button data-chartperiod="week" type="button">Semanal</button></div></div>
       </div>
       <div id="chart" class="chart-area" aria-live="polite"></div>
@@ -83,7 +83,7 @@
     </section>
 
     <section class="panel secondary-panel" id="secundarias">
-      <div class="section-head panel-head"><div><span class="eyebrow">ANÁLISE DE COERÊNCIA · S/C</span><h2>Anomalias secundárias</h2><p>Colunas D e E originais, sem classificação automática de coerência.</p></div><button class="btn btn-outline" id="downloadSecondary" type="button">Baixar resumo</button></div>
+      <div class="section-head panel-head"><div><span class="eyebrow">ANÁLISE DE COERÊNCIA · S/C</span><h2>Anomalias secundárias</h2><p>Dados originais do relatório, sem classificação automática de coerência.</p></div><button class="btn btn-outline" id="downloadSecondary" type="button">Baixar resumo</button></div>
       <div class="review-note">A análise de coerência deve ser feita pelo S/C. O arquivo detalhado inclui os campos em branco <b>Coerente? (Sim/Não)</b> e <b>Observação do S/C</b> para preenchimento manual.</div>
       <div class="table-wrap"><table><thead><tr><th>Anomalia primária (D)</th><th>Anomalia secundária (E)</th><th class="num">Qtd.</th><th class="num">Valor (R$)</th><th></th></tr></thead><tbody id="secondaryRows"></tbody></table></div>
     </section>
